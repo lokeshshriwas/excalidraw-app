@@ -9,10 +9,14 @@
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
+  "exports": {
+    "./config": "./src/config.ts"
+  },
   "devDependencies": {
     "@repo/typescript-config": "workspace:*"
   },
   "dependencies": {
-    "@types/node": "^22.15.3"
+    "@types/node": "^22.15.3",
+    "dotenv": "^17.2.0"
   }
 }
