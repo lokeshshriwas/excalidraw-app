@@ -1,3 +1,5 @@
+import dotenv from 'dotenv';
+dotenv.config({ path: '../.env' });
 import jwt from "jsonwebtoken"
 import bcrypt from "bcryptjs"
 import { prismaClient } from "@repo/db"
