@@ -24,3 +24,18 @@ export const createRoomController = async (req: any, res: any) => {
     });
   }
 };
+
+export const getRecentMessages  = async (req: any, res: any) => {
+    const roomId = req.params.roomId;
+    const messages = await prismaClient.chat.findMany({
+        where: {
+            roomId: Number(roomId)
+        },
+        orderBy: {
+            id: 'desc'
+        },
+        take: 50
+    })
+    res.status(200).json(messages);
+}
+

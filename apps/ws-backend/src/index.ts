@@ -1,6 +1,7 @@
 import { WebSocket, WebSocketServer } from "ws";
 import { JWT_SECRET } from "@repo/backend-common/config";
 import jwt from "jsonwebtoken";
+import { prismaClient } from "@repo/db";
 
 const wss = new WebSocketServer({ port: 9090 });
 
@@ -10,7 +11,14 @@ interface User {
   ws: WebSocket;
 }
 
+interface QueuedMessage {
+  roomId: number;
+  message: string;
+  userId: string;
+}
+
 const users: User[] = [];
+let messageQueue : QueuedMessage[] = [];
 
 function checkUser(token: string): string | null {
   try {
@@ -38,6 +46,31 @@ function checkUser(token: string): string | null {
     return null;
   }
 }
+
+async function saveMessagesToDatabase () {
+  if(messageQueue.length === 0) {
+    return;
+  }
+  const messageToSave = [...messageQueue];
+  messageQueue = [];
+
+  try {
+   await prismaClient.chat.createMany({
+      data: messageToSave.map((message) => ({
+        roomId: message.roomId,
+        message: message.message,
+        userId: message.userId,
+      })),
+    });
+    console.log("Messages saved")
+  } catch (error) {
+    console.log(error);
+    messageQueue.push(...messageToSave);
+  }
+
+}
+
+setInterval(saveMessagesToDatabase, 2000);
 
 wss.on("connection", function connection(ws, request) {
   const url = request.url;
@@ -80,13 +113,19 @@ wss.on("connection", function connection(ws, request) {
       const roomId = parsedData.roomId;
       const message = parsedData.message;
       users.forEach((user) => {
-        if (user.userId === userId) {
-          return;
-        }
         if (user.rooms.includes(roomId)) {
           user.ws.send(JSON.stringify({ type: "chat", roomId, message }));
         }
+        messageQueue.push({ roomId, message, userId });
       });
     }
   });
+});
+
+process.on('SIGTERM', async () => {
+  console.log('Shutting down...');
+  await saveMessagesToDatabase(); // Save any remaining messages
+  await prismaClient.$disconnect();
+  wss.close();
+  process.exit(0);
 });

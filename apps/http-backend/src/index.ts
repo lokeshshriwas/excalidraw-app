@@ -11,6 +11,6 @@ app.use("/v1/auth", authRouter);
 app.use("/v1/room", roomRouter);
 
 app.listen(3002, async () => {
-    // await prismaClient.$connect();
+    await prismaClient.$connect();
     console.log("Server is running on http://localhost:3002");
 });
