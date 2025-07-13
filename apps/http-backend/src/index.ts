@@ -2,8 +2,10 @@ import {prismaClient} from "@repo/db";
 import express from "express";
 import authRouter from "./routes/auth.router";
 import roomRouter from "./routes/room.router";
+import cors from "cors"
 
 const app = express();
+app.use(cors())
 
 app.use(express.json());
 
