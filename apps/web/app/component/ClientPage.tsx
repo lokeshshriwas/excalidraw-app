@@ -3,6 +3,7 @@
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { getSession } from '../utility/auth';
+import ChatPage from './ChatPage';
 
 export default function ClientPage() {
   const router = useRouter();
@@ -27,7 +28,7 @@ export default function ClientPage() {
   }
 
   if (isAuthenticated) {
-    return <div>Main page</div>;
+    return <ChatPage/>;
   }
 
   return null;
