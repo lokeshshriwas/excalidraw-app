@@ -5,7 +5,7 @@ import { useEffect, useState } from 'react';
 import { getSession } from '../utility/auth';
 import ChatPage from './ChatPage';
 
-export default function ClientPage() {
+export default function ClientPage({ roomId }: { roomId: number }) {
   const router = useRouter();
   const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
 
@@ -28,7 +28,7 @@ export default function ClientPage() {
   }
 
   if (isAuthenticated) {
-    return <ChatPage/>;
+    return <ChatPage roomId={roomId}/>;
   }
 
   return null;

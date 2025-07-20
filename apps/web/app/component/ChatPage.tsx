@@ -2,11 +2,21 @@
 
 import { useRouter } from "next/navigation";
 import React, { useEffect, useState } from "react";
+import { useSocket } from "../hooks/useSocket";
 
-const ChatPage = () => {
+interface Message {
+  id?: number;
+  message: string;
+  roomId?: number;
+  userId?: number;
+}
+
+const ChatPage = ({ roomId }: { roomId: number }) => {
   const router = useRouter();
-  const [message, setMessage] = useState([]);
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [sendMessage, setSendMessage] = useState("");
   const [loading, setLoading] = useState(true);
+  const { loading: socketLoading, socket } = useSocket();
 
   useEffect(() => {
     const token = localStorage.getItem("token");
@@ -17,7 +27,7 @@ const ChatPage = () => {
 
     async function getData() {
       try {
-        const response = await fetch("http://localhost:3002/v1/room/chats/6", {
+        const response = await fetch(`http://localhost:3002/v1/room/chats/${roomId}`, {
           method: "GET",
           headers: {
             "Content-Type": "application/json",
@@ -27,7 +37,7 @@ const ChatPage = () => {
 
         if (response.ok) {
           const data = await response.json();
-          setMessage(data);
+          setMessages(data);
         } else {
           console.error("Failed to fetch messages");
         }
@@ -39,17 +49,64 @@ const ChatPage = () => {
     }
 
     getData();
-  }, []);
+  }, [roomId, router]);
 
-  if (loading) return <div>Loading...</div>;
+  useEffect(() => {
+    if (socket) {
+      socket.send(
+        JSON.stringify({
+          type: "join_room",
+          id: roomId,
+        })
+      );
+
+      socket.onmessage = (event) => {
+        const parsedData = JSON.parse(event.data);
+        if (parsedData.type === "chat") {
+          setMessages((prev) => [...prev, { message: parsedData.message }]);
+        }
+      };
+    }
+  }, [socket , loading, roomId]);
+
+  const handleSendMessage = () => {
+    if (socket && sendMessage.trim()) {
+      const messageData = {
+        type: "chat",
+        message: sendMessage,
+        roomId: roomId,
+      };
+      socket.send(JSON.stringify(messageData));
+      setMessages((prev) => [...prev, { message: sendMessage }]);
+      setSendMessage("");
+    }
+  };
+
+  if (loading || socketLoading) return <div>Loading...</div>;
 
   return (
     <div>
       <h1>Chat</h1>
       <div>
-        {message && message.slice().reverse().map((item: any) => (
-          <div key={item.id}>{item.message}</div>
-        ))}
+        {messages &&
+          messages.slice().reverse()
+            .map((item: Message, index: number) => (
+              <div key={item.id || index}>{item.message}</div>
+            ))}
+
+        <div>
+          <input
+            type="text"
+            value={sendMessage}
+            onChange={(e) => setSendMessage(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                handleSendMessage();
+              }
+            }}
+          />
+          <button onClick={handleSendMessage}>Send</button>
+        </div>
       </div>
     </div>
   );

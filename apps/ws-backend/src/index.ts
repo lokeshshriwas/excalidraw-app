@@ -18,7 +18,7 @@ interface QueuedMessage {
 }
 
 const users: User[] = [];
-let messageQueue : QueuedMessage[] = [];
+const messageQueue = new Map();
 
 function checkUser(token: string): string | null {
   try {
@@ -30,14 +30,14 @@ function checkUser(token: string): string | null {
       throw new Error("JWT_SECRET is not defined");
     }
 
-    const verifyedToken = jwt.verify(token, JWT_SECRET);
+    const verifiedToken = jwt.verify(token, JWT_SECRET);
 
-    if (!verifyedToken) {
+    if (!verifiedToken) {
       return null;
     }
 
-    if (verifyedToken) {
-      return (verifyedToken as any).userId;
+    if (verifiedToken) {
+      return (verifiedToken as any).userId;
     }
 
     return null;
@@ -47,27 +47,28 @@ function checkUser(token: string): string | null {
   }
 }
 
-async function saveMessagesToDatabase () {
-  if(messageQueue.length === 0) {
+async function saveMessagesToDatabase() {
+  if (messageQueue.size === 0) {
     return;
   }
-  const messageToSave = [...messageQueue];
-  messageQueue = [];
+  const messages = Array.from(messageQueue.values());
+  messageQueue.clear();
 
   try {
-   await prismaClient.chat.createMany({
-      data: messageToSave.map((message) => ({
+    await prismaClient.chat.createMany({
+      data: messages.map((message) => ({
         roomId: message.roomId,
         message: message.message,
         userId: message.userId,
       })),
     });
-    console.log("Messages saved")
+    console.log("Messages saved");
   } catch (error) {
     console.log(error);
-    messageQueue.push(...messageToSave);
+    messages.forEach((message) => {
+      messageQueue.set(`${message.roomId}:${message.message}`, message);
+    });
   }
-
 }
 
 setInterval(saveMessagesToDatabase, 2000);
@@ -116,8 +117,16 @@ wss.on("connection", function connection(ws, request) {
         if (user.rooms.includes(roomId)) {
           user.ws.send(JSON.stringify({ type: "chat", roomId, message }));
         }
-        messageQueue.push({ roomId, message, userId });
       });
+      messageQueue.set(`${roomId}:${message}`, { roomId, message, userId });
+    }
+  });
+
+  ws.on("close", () => {
+    const userIndex = users.findIndex((user) => user.ws === ws);
+    if (userIndex !== -1) {
+      users.splice(userIndex, 1);
+      console.log("User disconnected and removed");
     }
   });
 });

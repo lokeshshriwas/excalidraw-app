@@ -39,3 +39,18 @@ export const getRecentMessages  = async (req: any, res: any) => {
     res.status(200).json(messages);
 }
 
+export const getRoomIdController = async(req: any, res: any)=>{
+  const slug = req.params.slug;
+  try {
+    const roomId = await prismaClient.room.findFirst({
+      where: {
+        slug
+      }
+    })
+    res.status(200).json(roomId);
+  } catch (error) {
+    res.status(404).json({
+      message: "Room not found",
+    }); 
+  }
+}

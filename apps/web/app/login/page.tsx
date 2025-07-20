@@ -2,7 +2,7 @@
 
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
-import { BASE_URL } from '@repo/backend-common/config';
+import { BASE_URL } from '../config';
 
 export default function LoginPage() {
   const router = useRouter();
@@ -11,7 +11,7 @@ export default function LoginPage() {
 
   const handleLogin = async () => {
     // Example: Call your login API
-    const response = await fetch(`${"http://localhost:3002/v1"}/auth/signin`, {
+    const response = await fetch(`${BASE_URL}/auth/signin`, {
       method: 'POST',
       body: JSON.stringify({ email, password }),
       headers: { 'Content-Type': 'application/json' },
@@ -19,8 +19,8 @@ export default function LoginPage() {
     const data = await response.json();
 
     if (data.token) {
-    localStorage.setItem("token", data.token)
-    router.push('/');
+      localStorage.setItem("token", data.token)
+      router.push('/joinRoom');
     }
   };
 
