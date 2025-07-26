@@ -1,54 +1,22 @@
-"use client";
+import CanvasClient from "@/app/component/CanvasClient";
+import { BASE_URL } from "@/app/config";
+import axios from "axios";
+import React from "react";
 
-import React, { useEffect } from 'react';
+const getRoomId = async (slug: string) => {
+  const response = await axios.get(`${BASE_URL}/room/${slug}`);
+  if (response.status == 200) {
+    return response?.data?.id
+  }
+  return <div>No chat found</div>
+};
 
-const Page = () => {
-  const canvasRef = React.useRef<HTMLCanvasElement>(null);
-
-  useEffect(() => {
-    const canvas = canvasRef.current;
-    if (canvas) {
-      // Set canvas size to match viewport
-      canvas.width = window.innerWidth;
-      canvas.height = window.innerHeight;
-
-      const ctx = canvas.getContext('2d');
-      if (!ctx) return;
-
-      let clicked = false;
-      let startX = 0;
-      let startY = 0;
-
-      canvas.addEventListener('mousedown', (e) => {
-        clicked = true;
-        startX = e.clientX;
-        startY = e.clientY;
-      });
-
-      canvas.addEventListener('mousemove', (e) => {
-        if (clicked) {
-          const width = e.clientX - startX;
-          const height = e.clientY - startY;
-          ctx.clearRect(0, 0, canvas.width, canvas.height);
-          ctx.strokeRect(startX, startY, width, height);
-        }
-      });
-
-      canvas.addEventListener('mouseup', () => {
-        clicked = false;
-      });
-    }
-  }, []);
+const Page = async ({ params }: { params: { slug: string } }) => {
+  const slug = (await params).slug;
+  const roomId : number | null = await getRoomId(slug); 
 
   return (
-    <canvas
-      ref={canvasRef}
-      style={{
-        width: '100vw',
-        height: '100vh',
-        display: 'block',
-      }}
-    />
+    <CanvasClient roomId={roomId}/>
   );
 };
 
