@@ -4,11 +4,16 @@ import axios from "axios";
 import React from "react";
 
 const getRoomId = async (slug: string) => {
-  const response = await axios.get(`${BASE_URL}/room/${slug}`);
-  if (response.status == 200) {
-    return response?.data?.id
+  try {
+    const response = await axios.get(`${BASE_URL}/room/${slug}`);
+    if (response.status === 200) {
+      return response.data.id;
+    }
+    return null;
+  } catch (error) {
+    console.error("Error fetching room ID:", error);
+    return null;
   }
-  return <div>No chat found</div>
 };
 
 const Page = async ({ params }: { params: { slug: string } }) => {

@@ -5,20 +5,15 @@ import { prismaClient } from "@repo/db";
 
 const wss = new WebSocketServer({ port: 9090 });
 
-interface User {
-  userId: string;
-  rooms: string[];
-  ws: WebSocket;
-}
-
 interface QueuedMessage {
   roomId: number;
   message: string;
   userId: string;
 }
 
-const users: User[] = [];
-const messageQueue = new Map();
+const roomConnections = new Map<string, WebSocket[]>();
+const userConnections = new Map<WebSocket, string>();
+const messageQueue = new Map<string, QueuedMessage>();
 
 function checkUser(token: string): string | null {
   try {
@@ -86,46 +81,52 @@ wss.on("connection", function connection(ws, request) {
     return;
   }
 
-  users.push({
-    userId,
-    rooms: [],
-    ws,
-  });
+  userConnections.set(ws, userId);
 
   ws.on("message", function message(data) {
     const parsedData = JSON.parse(data.toString());
     if (parsedData.type === "join_room") {
       const roomId = parsedData.roomId;
-      const user = users.find((user) => user.userId === userId);
-      if (user && !user.rooms.includes(roomId)) {
-        user.rooms.push(roomId);
+      if (!roomConnections.has(roomId)) {
+        roomConnections.set(roomId, []);
       }
+      roomConnections.get(roomId)?.push(ws);
     }
 
     if (parsedData.type === "leave_room") {
       const roomId = parsedData.roomId;
-      const user = users.find((user) => user.userId === userId);
-      if (user && user.rooms.includes(roomId)) {
-        user.rooms = user.rooms.filter((room) => room !== roomId);
+      const connections = roomConnections.get(roomId);
+      if (connections) {
+        roomConnections.set(
+          roomId,
+          connections.filter((connection) => connection !== ws)
+        );
       }
     }
 
     if (parsedData.type === "chat") {
       const roomId = parsedData.roomId;
       const message = parsedData.message;
-      users.forEach((user) => {
-        if (user.rooms.includes(roomId)) {
-          user.ws.send(JSON.stringify({ type: "chat", roomId, message }));
-        }
-      });
+      const connections = roomConnections.get(roomId);
+      if (connections) {
+        connections.forEach((connection) => {
+          connection.send(JSON.stringify({ type: "chat", roomId, message }));
+        });
+      }
       messageQueue.set(`${roomId}:${message}`, { roomId, message, userId });
     }
   });
 
   ws.on("close", () => {
-    const userIndex = users.findIndex((user) => user.ws === ws);
-    if (userIndex !== -1) {
-      users.splice(userIndex, 1);
+    const userId = userConnections.get(ws);
+    if (userId) {
+      roomConnections.forEach((connections, roomId) => {
+        roomConnections.set(
+          roomId,
+          connections.filter((connection) => connection !== ws)
+        );
+      });
+      userConnections.delete(ws);
       console.log("User disconnected and removed");
     }
   });
