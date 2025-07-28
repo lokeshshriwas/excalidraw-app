@@ -34,7 +34,7 @@ export const getRecentMessages  = async (req: any, res: any) => {
         orderBy: {
             id: 'desc'
         },
-        take: 50
+        take: 1000
     })
     res.status(200).json(messages);
 }

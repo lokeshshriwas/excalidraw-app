@@ -3,9 +3,12 @@ import express from "express";
 import authRouter from "./routes/auth.router";
 import roomRouter from "./routes/room.router";
 import cors from "cors"
+const corsOptions = {
+  origin: ['http://localhost:3000', 'http://localhost:5173'] // Replace with your frontend origin
+};
 
 const app = express();
-app.use(cors())
+app.use(cors(corsOptions))
 
 app.use(express.json());
 
