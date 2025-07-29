@@ -4,6 +4,7 @@ import { Game, Tool } from "../draw/game";
 import { IconButton } from "./IconButton";
 import { LuRectangleHorizontal } from "react-icons/lu";
 import { LuCircle } from "react-icons/lu";
+import { IoText } from "react-icons/io5";
 
 const Canvas = ({
   roomId,
@@ -76,6 +77,9 @@ function Topbar({selectedTool, setSelectedTool}: {
                 <IconButton onClick={() => {
                     setSelectedTool("circle")
                 }} activated={selectedTool === "circle"} icon={<LuCircle />}></IconButton>
+                <IconButton onClick={() => {
+                    setSelectedTool("text")
+                }} activated={selectedTool === "text"} icon={<IoText />}></IconButton>
             </div>
         </div>
 }

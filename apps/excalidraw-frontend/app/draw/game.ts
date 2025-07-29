@@ -20,9 +20,15 @@ export type Shapes =
       x: number;
       y: number;
       radius: number;
+    }
+  | {
+      type: "text";
+      x: number;
+      y: number;
+      text: string;
     };
 
-export type Tool = "rect" | "line" | "circle";
+export type Tool = "rect" | "line" | "circle" | "text";
 
 export class Game {
   private canvas: HTMLCanvasElement;
@@ -34,18 +40,18 @@ export class Game {
   private startX = 0;
   private startY = 0;
   private selectedTool: Tool = "rect";
+  private text = "";
 
-  constructor(
-    canvas: HTMLCanvasElement,
-    roomId: number | null,
-    socket: WebSocket
-  ) {
-    ((this.canvas = canvas),
-      (this.ctx = canvas.getContext("2d")!),
-      (this.roomId = roomId),
-      (this.socket = socket));
+  constructor(canvas: HTMLCanvasElement, roomId: number | null, socket: WebSocket) {
+    this.canvas = canvas;
+    this.ctx = canvas.getContext("2d")!;
+    this.roomId = roomId;
+    this.socket = socket;
     this.existingShapes = [];
     this.clicked = false;
+
+    this.canvas.tabIndex = 0; // Make canvas focusable for keyboard input
+
     this.init();
     this.initHandlers();
     this.initMouseHandlers();
@@ -64,10 +70,12 @@ export class Game {
     this.canvas.removeEventListener("mousedown", this.mouseDownHandler);
     this.canvas.removeEventListener("mouseup", this.mouseUpHandler);
     this.canvas.removeEventListener("mousemove", this.mouseMoveHandler);
+    this.canvas.removeEventListener("keydown", this.onKeyDownHandler);
   }
 
   setTool(tool: Tool) {
     this.selectedTool = tool;
+    this.clicked = false;
   }
 
   initHandlers() {
@@ -98,6 +106,10 @@ export class Game {
         this.ctx.beginPath();
         this.ctx.arc(shape.x, shape.y, shape.radius, 0, 2 * Math.PI);
         this.ctx.stroke();
+      } else if (shape.type === "text") {
+        this.ctx.font = "20px Arial";
+        this.ctx.fillStyle = "white";
+        this.ctx.fillText(shape.text, shape.x, shape.y);
       }
     });
   }
@@ -106,9 +118,16 @@ export class Game {
     this.clicked = true;
     this.startX = e.clientX;
     this.startY = e.clientY;
+
+    if (this.selectedTool === "text") {
+      this.text = "";
+      this.canvas.focus(); // So we can capture keyboard input
+    }
   };
 
   mouseUpHandler = (e: MouseEvent) => {
+    if (this.selectedTool === "text") return;
+
     this.clicked = false;
     const width = e.clientX - this.startX;
     const height = e.clientY - this.startY;
@@ -122,7 +141,7 @@ export class Game {
         width: width,
         height: height,
       };
-    } else if(this.selectedTool === "line") {
+    } else if (this.selectedTool === "line") {
       shape = {
         type: "line",
         x1: this.startX,
@@ -130,7 +149,7 @@ export class Game {
         x2: e.clientX,
         y2: e.clientY,
       };
-    } else if(this.selectedTool === "circle") {
+    } else if (this.selectedTool === "circle") {
       shape = {
         type: "circle",
         x: this.startX,
@@ -139,28 +158,29 @@ export class Game {
       };
     }
 
-    if(shape){
+    if (shape) {
       this.existingShapes.push(shape);
+
+      this.socket.send(
+        JSON.stringify({
+          roomId: this.roomId,
+          type: "chat",
+          message: JSON.stringify(shape),
+        })
+      );
+
+      this.clearCanvas();
     }
-
-    this.socket.send(
-      JSON.stringify({
-        roomId: this.roomId,
-        type: "chat",
-        message: JSON.stringify(shape),
-      })
-    );
-
-    this.clearCanvas();
   };
 
   mouseMoveHandler = (e: MouseEvent) => {
-    if (this.clicked) {
+    if (this.clicked && this.selectedTool !== "text") {
       const width = e.clientX - this.startX;
       const height = e.clientY - this.startY;
       this.clearCanvas();
       this.ctx.strokeStyle = "white";
-      if(this.selectedTool === "rect") {
+
+      if (this.selectedTool === "rect") {
         this.ctx.strokeRect(this.startX, this.startY, width, height);
       } else if (this.selectedTool === "line") {
         this.ctx.beginPath();
@@ -169,17 +189,51 @@ export class Game {
         this.ctx.stroke();
       } else if (this.selectedTool === "circle") {
         this.ctx.beginPath();
-        this.ctx.arc(this.startX, this.startY, Math.sqrt(width * width  +  height * height), 0, 2 * Math.PI);
+        this.ctx.arc(this.startX, this.startY, Math.sqrt(width * width + height * height), 0, 2 * Math.PI);
         this.ctx.stroke();
       }
     }
   };
 
+  onKeyDownHandler = (e: KeyboardEvent) => {
+    if (this.selectedTool === "text" && this.clicked) {
+      if (e.key === "Enter" ) {
+        const shape: Shapes = {
+          type: "text",
+          x: this.startX,
+          y: this.startY,
+          text: this.text,
+        };
+
+        this.existingShapes.push(shape);
+        this.socket.send(
+          JSON.stringify({
+            roomId: this.roomId,
+            type: "chat",
+            message: JSON.stringify(shape),
+          })
+        );
+
+        this.text = "";
+        this.clicked = false;
+        this.clearCanvas();
+      } else if (e.key === "Backspace") {
+        this.text = this.text.slice(0, -1);
+      } else if (e.key.length === 1) {
+        this.text += e.key;
+      }
+
+      this.clearCanvas();
+      this.ctx.font = "20px Arial";
+      this.ctx.fillStyle = "white";
+      this.ctx.fillText(this.text, this.startX, this.startY);
+    }
+  };
+
   initMouseHandlers() {
     this.canvas.addEventListener("mousedown", this.mouseDownHandler);
-
     this.canvas.addEventListener("mouseup", this.mouseUpHandler);
-
     this.canvas.addEventListener("mousemove", this.mouseMoveHandler);
+    this.canvas.addEventListener("keydown", this.onKeyDownHandler);
   }
 }
