@@ -11,11 +11,11 @@ export async function getExistingShapes(roomId: number | null) {
       authorization: `${token}`,
     },
   });
-  const messages = res.data.messages;
+  const messages = res.data;
 
   const shapes = messages.map((x: { message: string }) => {
     const messageData = JSON.parse(x.message);
-    return messageData.shape;
+    return messageData;
   });
 
   return shapes;

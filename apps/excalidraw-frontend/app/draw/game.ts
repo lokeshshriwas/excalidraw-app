@@ -41,7 +41,7 @@ export class Game {
     socket: WebSocket
   ) {
     ((this.canvas = canvas),
-    this.ctx = canvas.getContext("2d")!,
+      (this.ctx = canvas.getContext("2d")!),
       (this.roomId = roomId),
       (this.socket = socket));
     this.existingShapes = [];
@@ -49,6 +49,15 @@ export class Game {
     this.init();
     this.initHandlers();
     this.initMouseHandlers();
+  }
+
+  async init() {
+    try {
+      this.existingShapes = await getExistingShapes(this.roomId);
+      this.clearCanvas();
+    } catch (error) {
+      console.log(error);
+    }
   }
 
   destroy() {
@@ -70,20 +79,6 @@ export class Game {
         this.clearCanvas();
       }
     };
-  }
-
-  async init() {
-    try {
-        const response = await getExistingShapes(this.roomId);
-        if(response) {
-            this.existingShapes = response
-            console.log(this.existingShapes)
-        }
-        this.clearCanvas();
-        
-    } catch (error) {
-        
-    }
   }
 
   clearCanvas() {
@@ -118,14 +113,35 @@ export class Game {
     const width = e.clientX - this.startX;
     const height = e.clientY - this.startY;
 
-    const shape: Shapes = {
-      type: "rect",
-      x: this.startX,
-      y: this.startY,
-      width: width,
-      height: height,
-    };
-    this.existingShapes.push(shape);
+    let shape: Shapes | null = null;
+    if (this.selectedTool === "rect") {
+      shape = {
+        type: "rect",
+        x: this.startX,
+        y: this.startY,
+        width: width,
+        height: height,
+      };
+    } else if(this.selectedTool === "line") {
+      shape = {
+        type: "line",
+        x1: this.startX,
+        y1: this.startY,
+        x2: e.clientX,
+        y2: e.clientY,
+      };
+    } else if(this.selectedTool === "circle") {
+      shape = {
+        type: "circle",
+        x: this.startX,
+        y: this.startY,
+        radius: Math.sqrt(width * width + height * height),
+      };
+    }
+
+    if(shape){
+      this.existingShapes.push(shape);
+    }
 
     this.socket.send(
       JSON.stringify({
@@ -144,7 +160,18 @@ export class Game {
       const height = e.clientY - this.startY;
       this.clearCanvas();
       this.ctx.strokeStyle = "white";
-      this.ctx.strokeRect(this.startX, this.startY, width, height);
+      if(this.selectedTool === "rect") {
+        this.ctx.strokeRect(this.startX, this.startY, width, height);
+      } else if (this.selectedTool === "line") {
+        this.ctx.beginPath();
+        this.ctx.moveTo(this.startX, this.startY);
+        this.ctx.lineTo(e.clientX, e.clientY);
+        this.ctx.stroke();
+      } else if (this.selectedTool === "circle") {
+        this.ctx.beginPath();
+        this.ctx.arc(this.startX, this.startY, Math.sqrt(width * width  +  height * height), 0, 2 * Math.PI);
+        this.ctx.stroke();
+      }
     }
   };
 
