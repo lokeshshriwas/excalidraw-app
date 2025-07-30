@@ -1,10 +1,11 @@
 import React, { useEffect } from "react";
-import { GoPencil } from "react-icons/go";
+import { LuMinus } from "react-icons/lu";
 import { Game, Tool } from "../draw/game";
 import { IconButton } from "./IconButton";
 import { LuRectangleHorizontal } from "react-icons/lu";
 import { LuCircle } from "react-icons/lu";
 import { IoText } from "react-icons/io5";
+import { LuPencil } from "react-icons/lu";
 
 const Canvas = ({
   roomId,
@@ -69,7 +70,7 @@ function Topbar({selectedTool, setSelectedTool}: {
                         setSelectedTool("line")
                     }}
                     activated={selectedTool === "line"}
-                    icon={<GoPencil />}
+                    icon={<LuMinus />}
                 />
                 <IconButton onClick={() => {
                     setSelectedTool("rect")
@@ -80,6 +81,9 @@ function Topbar({selectedTool, setSelectedTool}: {
                 <IconButton onClick={() => {
                     setSelectedTool("text")
                 }} activated={selectedTool === "text"} icon={<IoText />}></IconButton>
+                <IconButton onClick={() => {
+                    setSelectedTool("pencil")
+                }} activated={selectedTool === "pencil"} icon={<LuPencil />}></IconButton>
             </div>
         </div>
 }
