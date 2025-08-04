@@ -6,6 +6,7 @@ import { LuRectangleHorizontal } from "react-icons/lu";
 import { LuCircle } from "react-icons/lu";
 import { IoText } from "react-icons/io5";
 import { LuPencil } from "react-icons/lu";
+import { TfiHandDrag } from "react-icons/tfi";
 
 const Canvas = ({
   roomId,
@@ -16,13 +17,14 @@ const Canvas = ({
 }) => {
   const canvasRef = React.useRef<HTMLCanvasElement>(null);
   const [game, setGame] = React.useState<Game | null>(null);
-  const [selectedTool, setSelectedTool] = React.useState<Tool>("circle");
+  const [selectedTool, setSelectedTool] = React.useState<Tool>("pan");
 
   useEffect(() => {
     game?.setTool(selectedTool);
   }, [selectedTool, game]);
 
   useEffect(() => {
+    console.log(canvasRef.current)
     if (!canvasRef.current || roomId === null) return;
 
     const g = new Game(canvasRef.current, roomId, socket);
@@ -34,18 +36,16 @@ const Canvas = ({
   }, [canvasRef]);
 
   return (
-    <div style={{
-        height: "100vh",
-        overflow: "hidden"
-    }}>
+    <div>
       <canvas
-        width={window.innerWidth} height={window.innerHeight}
+        // width={window.innerWidth} height={window.innerHeight}
         ref={canvasRef}
         style={{
-          width: "100vw",
-          height: "100vh",
+          width: "100%",
+          height: "100%",
           display: "block",
           background: "black",
+          cursor: selectedTool === "pan" ? "grab" : "default",
         }}
       />
       <Topbar setSelectedTool={setSelectedTool} selectedTool={selectedTool} />
@@ -62,7 +62,7 @@ function Topbar({selectedTool, setSelectedTool}: {
     return <div style={{
             position: "fixed",
             top: 10,
-            left: 10
+            left: 10,
         }}>
             <div  style={{display: "flex", gap: "10px"}}>
                 <IconButton 
@@ -84,6 +84,9 @@ function Topbar({selectedTool, setSelectedTool}: {
                 <IconButton onClick={() => {
                     setSelectedTool("pencil")
                 }} activated={selectedTool === "pencil"} icon={<LuPencil />}></IconButton>
+                <IconButton onClick={() => {
+                    setSelectedTool("pan")
+                }} activated={selectedTool === "pan"} icon={<TfiHandDrag />}></IconButton>
             </div>
         </div>
 }

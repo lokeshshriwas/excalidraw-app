@@ -29,7 +29,7 @@ export type Shapes =
     }
   | { type: "pencil"; x1: number; y1: number; x2: number; y2: number };
 
-export type Tool = "rect" | "line" | "circle" | "text" | "pencil";
+export type Tool = "rect" | "line" | "circle" | "text" | "pencil" | "pan";
 
 export class Game {
   private canvas: HTMLCanvasElement;
@@ -41,8 +41,20 @@ export class Game {
   private startX = 0;
   private startY = 0;
   private selectedTool: Tool = "rect";
+  private previewShape: Shapes | null = null;
   private text = "";
-  private newSegment :Shapes[] = [];
+  private newSegment: Shapes[] = [];
+  private MAX_ZOOM = 5;
+  private MIN_ZOOM = 0.1;
+  private cameraZoom = 1;
+  private SCROLL_SENSITIVITY = 0.0005;
+  private isDragging = false;
+  private dragStart = { x: 0, y: 0 };
+  private cameraOffset = {
+    x: window.innerWidth / 2,
+    y: window.innerHeight / 2,
+  };
+  private zoomFactor = null;
 
   constructor(
     canvas: HTMLCanvasElement,
@@ -61,12 +73,13 @@ export class Game {
     this.init();
     this.initHandlers();
     this.initMouseHandlers();
+    this.resizeHandler();
   }
 
   async init() {
     try {
       this.existingShapes = await getExistingShapes(this.roomId);
-      this.clearCanvas();
+      this.draw();
     } catch (error) {
       console.log(error);
     }
@@ -77,6 +90,8 @@ export class Game {
     this.canvas.removeEventListener("mouseup", this.mouseUpHandler);
     this.canvas.removeEventListener("mousemove", this.mouseMoveHandler);
     this.canvas.removeEventListener("keydown", this.onKeyDownHandler);
+    this.canvas.removeEventListener("wheel", this.onWheelHandler);
+    window.removeEventListener("resize", this.resizeHandler);
   }
 
   setTool(tool: Tool) {
@@ -88,18 +103,29 @@ export class Game {
     this.socket.onmessage = (event) => {
       const message = JSON.parse(event.data);
       if (message.type === "chat") {
-        const parsedMessage = JSON.parse(message.message);
-        this.existingShapes.push(parsedMessage);
-        this.clearCanvas();
-      }
+        const newMessage = JSON.parse(message.message);
+        console.log(newMessage)
+        if(Array.isArray(newMessage)) {
+          newMessage.map((shape) => {
+            this.existingShapes.push(shape);
+          })
+          this.draw();
+        } else {
+          const parsedMessage = JSON.parse(message.message);
+          this.existingShapes.push(parsedMessage);
+          this.draw();
+        }
+
+      } 
     };
   }
 
   clearCanvas() {
     this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
-    this.ctx.fillStyle = "rgba(0,0,0)";
-    this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+  }
 
+  drawShapes() {
+    this.ctx.strokeStyle = "white";
     this.existingShapes.forEach((shape) => {
       if (shape.type === "rect") {
         this.ctx.strokeRect(shape.x, shape.y, shape.width, shape.height);
@@ -123,19 +149,54 @@ export class Game {
         this.ctx.stroke();
       }
     });
+
+    if (this.previewShape) {
+      this.ctx.strokeStyle = "red";
+      if (this.previewShape.type === "rect") {
+        this.ctx.strokeRect(this.previewShape.x, this.previewShape.y, this.previewShape.width, this.previewShape.height);
+      } else if (this.previewShape.type === "line") {
+        this.ctx.beginPath();
+        this.ctx.moveTo(this.previewShape.x1, this.previewShape.y1);
+        this.ctx.lineTo(this.previewShape.x2, this.previewShape.y2);
+        this.ctx.stroke();
+      } else if (this.previewShape.type === "circle") {
+        this.ctx.beginPath();
+        this.ctx.arc(this.previewShape.x, this.previewShape.y, this.previewShape.radius, 0, 2 * Math.PI);
+        this.ctx.stroke();
+      } else if (this.previewShape.type === "text") {
+        this.ctx.font = "20px Arial";
+        this.ctx.fillStyle = "red";
+        this.ctx.fillText(this.previewShape.text, this.previewShape.x, this.previewShape.y);
+      }
+    }
   }
+
+  onPointerDown = (e : MouseEvent) => {
+    if (this.selectedTool === "pan") {
+      this.isDragging = true;
+      this.dragStart.x = e.clientX / this.cameraZoom - this.cameraOffset.x;
+      this.dragStart.y = e.clientY / this.cameraZoom - this.cameraOffset.y;
+    }
+  }
+
+  onPointerUp = (e : MouseEvent)=> {
+    this.isDragging = false;
+  }
+
 
   mouseDownHandler = (e: MouseEvent) => {
     this.clicked = true;
-    this.startX = e.clientX;
-    this.startY = e.clientY;
+    const worldCoords = this.getWorldCoordinates(e.clientX, e.clientY);
+    this.startX = worldCoords.x;
+    this.startY = worldCoords.y;
 
     if (this.selectedTool === "text") {
       this.text = "";
       this.canvas.focus(); // So we can capture keyboard input
     } else if (this.selectedTool === "pencil") {
-      this.startX = e.offsetX;
-      this.startY = e.offsetY;
+      const worldCoords = this.getWorldCoordinates(e.clientX, e.clientY);
+      this.startX = worldCoords.x;
+      this.startY = worldCoords.y;
     }
   };
 
@@ -143,109 +204,79 @@ export class Game {
     if (this.selectedTool === "text") return;
 
     this.clicked = false;
-    const width = e.clientX - this.startX;
-    const height = e.clientY - this.startY;
-
-    let shape: Shapes | null = null;
-    if (this.selectedTool === "rect") {
-      shape = {
-        type: "rect",
-        x: this.startX,
-        y: this.startY,
-        width: width,
-        height: height,
-      };
-    } else if (this.selectedTool === "line") {
-      shape = {
-        type: "line",
-        x1: this.startX,
-        y1: this.startY,
-        x2: e.clientX,
-        y2: e.clientY,
-      };
-    } else if (this.selectedTool === "circle") {
-      shape = {
-        type: "circle",
-        x: this.startX,
-        y: this.startY,
-        radius: Math.sqrt(width * width + height * height),
-      };
-    }
-
-    if (shape && this.selectedTool !== "pencil") {
-      this.existingShapes.push(shape);
-
+    if (this.previewShape && this.selectedTool !== "pencil") {
+      this.existingShapes.push(this.previewShape);
       this.socket.send(
         JSON.stringify({
           roomId: this.roomId,
           type: "chat",
-          message: JSON.stringify(shape),
+          message: JSON.stringify(this.previewShape),
         })
       );
-
-      this.clearCanvas();
-    } else if(this.selectedTool === "pencil") {
-      this.socket.send(JSON.stringify({
-      roomId: this.roomId,
-      type: "chat",
-      message: JSON.stringify(this.newSegment),
-    }));
-    this.newSegment = [];
-    this.clearCanvas();
+      this.previewShape = null;
+    } else if (this.selectedTool === "pencil") {
+      this.socket.send(
+        JSON.stringify({
+          roomId: this.roomId,
+          type: "chat",
+          message: JSON.stringify(this.newSegment),
+        })
+      );
+      this.newSegment = [];
+      this.draw();
     }
   };
 
   mouseMoveHandler = (e: MouseEvent) => {
-    if (this.clicked && this.selectedTool !== "text") {
-      const width = e.clientX - this.startX;
-      const height = e.clientY - this.startY;
-      if (this.selectedTool !== "pencil") {
-        this.clearCanvas();  // only clear for rect, line, circle previews
-      }
-
-      this.ctx.strokeStyle = "white";
+    if (this.isDragging && this.selectedTool === "pan") {
+      this.cameraOffset.x = e.clientX / this.cameraZoom - this.dragStart.x;
+      this.cameraOffset.y = e.clientY / this.cameraZoom - this.dragStart.y;
+      this.draw();
+    } else if (this.clicked && this.selectedTool !== "text") {
+      const worldCoords = this.getWorldCoordinates(e.clientX, e.clientY);
+      const width = worldCoords.x - this.startX;
+      const height = worldCoords.y - this.startY;
 
       if (this.selectedTool === "rect") {
-        this.ctx.strokeRect(this.startX, this.startY, width, height);
+        this.previewShape = {
+          type: "rect",
+          x: this.startX,
+          y: this.startY,
+          width: width,
+          height: height,
+        };
       } else if (this.selectedTool === "line") {
-        this.ctx.beginPath();
-        this.ctx.moveTo(this.startX, this.startY);
-        this.ctx.lineTo(e.clientX, e.clientY);
-        this.ctx.stroke();
+        this.previewShape = {
+          type: "line",
+          x1: this.startX,
+          y1: this.startY,
+          x2: worldCoords.x,
+          y2: worldCoords.y,
+        };
+      } else if (this.selectedTool === "circle") {
+        this.previewShape = {
+          type: "circle",
+          x: this.startX,
+          y: this.startY,
+          radius: Math.sqrt(width * width + height * height),
+        };
       } else if (this.selectedTool === "pencil") {
         const newSegment: Shapes = {
           type: "pencil",
           x1: this.startX,
           y1: this.startY,
-          x2: e.offsetX,
-          y2: e.offsetY,
+          x2: worldCoords.x,
+          y2: worldCoords.y,
         };
 
         this.existingShapes.push(newSegment);
-        this.newSegment.push(newSegment)
-
-        this.ctx.beginPath();
-        this.ctx.moveTo(this.startX, this.startY);
-        this.ctx.lineTo(e.offsetX, e.offsetY);
-        this.ctx.strokeStyle = "white";
-        this.ctx.lineCap = "round";
-        this.ctx.lineJoin = "round";
-        this.ctx.stroke();
+        this.newSegment.push(newSegment);
 
         // Update for next segment
-        this.startX = e.offsetX;
-        this.startY = e.offsetY;
-      } else if (this.selectedTool === "circle") {
-        this.ctx.beginPath();
-        this.ctx.arc(
-          this.startX,
-          this.startY,
-          Math.sqrt(width * width + height * height),
-          0,
-          2 * Math.PI
-        );
-        this.ctx.stroke();
+        this.startX = worldCoords.x;
+        this.startY = worldCoords.y;
       }
+      this.draw();
     }
   };
 
@@ -258,8 +289,8 @@ export class Game {
           y: this.startY,
           text: this.text,
         };
-
         this.existingShapes.push(shape);
+        this.previewShape = null;
         this.socket.send(
           JSON.stringify({
             roomId: this.roomId,
@@ -270,24 +301,86 @@ export class Game {
 
         this.text = "";
         this.clicked = false;
-        this.clearCanvas();
+        this.draw();
       } else if (e.key === "Backspace") {
         this.text = this.text.slice(0, -1);
       } else if (e.key.length === 1) {
         this.text += e.key;
       }
-
-      this.clearCanvas();
-      this.ctx.font = "20px Arial";
-      this.ctx.fillStyle = "white";
-      this.ctx.fillText(this.text, this.startX, this.startY);
+      this.previewShape= {
+        type: "text",
+        x: this.startX,
+        y: this.startY,
+        text: this.text
+      }
+      this.draw();
     }
   };
 
+  onWheelHandler = (e: WheelEvent) => {
+    e.preventDefault(); // Prevent page scrolling
+
+    const zoomAmount = -e.deltaY * this.SCROLL_SENSITIVITY;
+
+    // Apply zoom smoothly
+    this.cameraZoom += zoomAmount;
+
+    // Clamp zoom between MIN and MAX
+    this.cameraZoom = Math.min(this.cameraZoom, this.MAX_ZOOM);
+    this.cameraZoom = Math.max(this.cameraZoom, this.MIN_ZOOM);
+    this.clearCanvas()
+    this.draw(); // Re-render immediately
+  };
+
+  draw = () => {
+    this.clearCanvas();
+
+    // Translate to the canvas centre before zooming - so you'll always zoom on what you're looking directly at
+    this.ctx.save();
+    this.ctx.translate(this.canvas.width / 2, this.canvas.height / 2);
+    this.ctx.scale(this.cameraZoom, this.cameraZoom);
+    this.ctx.translate(
+      -this.canvas.width / 2 + this.cameraOffset.x,
+      -this.canvas.height / 2 + this.cameraOffset.y
+    );
+
+    this.drawShapes();
+    this.ctx.restore();
+  };
+
+  getWorldCoordinates(x: number, y: number) {
+    const invertedZoom = 1 / this.cameraZoom;
+    const x1 = (x - (this.canvas.width / 2 + this.cameraOffset.x - this.canvas.width / 2)) * invertedZoom;
+    const y1 = (y - (this.canvas.height / 2 + this.cameraOffset.y - this.canvas.height / 2)) * invertedZoom;
+    return { x: x1, y: y1 };
+  }
+
+  resizeHandler = () => {
+    this.canvas.width = window.innerWidth;
+    this.canvas.height = window.innerHeight;
+    this.draw();
+  };
+
   initMouseHandlers() {
-    this.canvas.addEventListener("mousedown", this.mouseDownHandler);
-    this.canvas.addEventListener("mouseup", this.mouseUpHandler);
+    this.canvas.addEventListener("mousedown", (e) => {
+      if (this.selectedTool === "pan") {
+        this.onPointerDown(e);
+      } else {
+        this.mouseDownHandler(e);
+      }
+    });
+    this.canvas.addEventListener("mouseup", (e) => {
+      if (this.selectedTool === "pan") {
+        this.onPointerUp(e);
+      } else {
+        this.mouseUpHandler(e);
+      }
+    });
     this.canvas.addEventListener("mousemove", this.mouseMoveHandler);
     this.canvas.addEventListener("keydown", this.onKeyDownHandler);
+    this.canvas.addEventListener("wheel", this.onWheelHandler, {
+      passive: false,
+    });
+    window.addEventListener("resize", this.resizeHandler);
   }
 }
