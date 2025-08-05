@@ -54,7 +54,6 @@ export class Game {
     x: window.innerWidth / 2,
     y: window.innerHeight / 2,
   };
-  private zoomFactor = null;
 
   constructor(
     canvas: HTMLCanvasElement,
@@ -182,7 +181,6 @@ export class Game {
   onPointerUp = (e : MouseEvent)=> {
     this.isDragging = false;
   }
-
 
   mouseDownHandler = (e: MouseEvent) => {
     this.clicked = true;
@@ -349,10 +347,9 @@ export class Game {
   };
 
   getWorldCoordinates(x: number, y: number) {
-    const invertedZoom = 1 / this.cameraZoom;
-    const x1 = (x - (this.canvas.width / 2 + this.cameraOffset.x - this.canvas.width / 2)) * invertedZoom;
-    const y1 = (y - (this.canvas.height / 2 + this.cameraOffset.y - this.canvas.height / 2)) * invertedZoom;
-    return { x: x1, y: y1 };
+    const worldX = (x - this.canvas.width / 2) / this.cameraZoom - this.cameraOffset.x + this.canvas.width / 2;
+    const worldY = (y - this.canvas.height / 2) / this.cameraZoom - this.cameraOffset.y + this.canvas.height / 2;
+    return { x: worldX, y: worldY };
   }
 
   resizeHandler = () => {
