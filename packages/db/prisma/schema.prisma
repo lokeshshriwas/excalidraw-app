@@ -33,7 +33,7 @@ model Room {
 }
 
 model Chat {
-  id      Int    @id @default(autoincrement())
+  id      String @id @db.Uuid
   roomId  Int
   message String
   userId  String

@@ -6,6 +6,7 @@ import { prismaClient } from "@repo/db";
 const wss = new WebSocketServer({ port: 9090 });
 
 interface QueuedMessage {
+  id : string
   roomId: number;
   message: string;
   userId: string;
@@ -52,6 +53,7 @@ async function saveMessagesToDatabase() {
   try {
     await prismaClient.chat.createMany({
       data: messages.map((message) => ({
+        id : message.id,
         roomId: message.roomId,
         message: message.message,
         userId: message.userId,
@@ -105,15 +107,16 @@ wss.on("connection", function connection(ws, request) {
     }
 
     if (parsedData.type === "chat") {
+      const id = parsedData.id;
       const roomId = parsedData.roomId;
       const message = parsedData.message;
       const connections = roomConnections.get(roomId);
       if (connections) {
         connections.forEach((connection) => {
-          connection.send(JSON.stringify({ type: "chat", roomId, message }));
+          connection.send(JSON.stringify({ id, type: "chat", roomId, message }));
         });
       }
-      messageQueue.set(`${roomId}:${message}`, { roomId, message, userId });
+      messageQueue.set(`${roomId}:${message}`, { id ,roomId, message, userId });
     }
   });
 
