@@ -24,7 +24,6 @@ const Canvas = ({
   }, [selectedTool, game]);
 
   useEffect(() => {
-    console.log(canvasRef.current)
     if (!canvasRef.current || roomId === null) return;
 
     const g = new Game(canvasRef.current, roomId, socket);
@@ -38,7 +37,6 @@ const Canvas = ({
   return (
     <div>
       <canvas
-        // width={window.innerWidth} height={window.innerHeight}
         ref={canvasRef}
         style={{
           width: "100%",

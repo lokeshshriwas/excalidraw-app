@@ -1,4 +1,5 @@
 import { getExistingShapes } from "./http";
+import { v4 as uuidv4 } from 'uuid';
 
 export type Shapes =
   | {
@@ -103,7 +104,6 @@ export class Game {
       const message = JSON.parse(event.data);
       if (message.type === "chat") {
         const newMessage = JSON.parse(message.message);
-        console.log(newMessage)
         if(Array.isArray(newMessage)) {
           newMessage.map((shape) => {
             this.existingShapes.push(shape);
@@ -206,6 +206,7 @@ export class Game {
       this.existingShapes.push(this.previewShape);
       this.socket.send(
         JSON.stringify({
+          id : uuidv4(),
           roomId: this.roomId,
           type: "chat",
           message: JSON.stringify(this.previewShape),
@@ -215,6 +216,7 @@ export class Game {
     } else if (this.selectedTool === "pencil") {
       this.socket.send(
         JSON.stringify({
+          id : uuidv4(),
           roomId: this.roomId,
           type: "chat",
           message: JSON.stringify(this.newSegment),
@@ -291,6 +293,7 @@ export class Game {
         this.previewShape = null;
         this.socket.send(
           JSON.stringify({
+            id : uuidv4(),
             roomId: this.roomId,
             type: "chat",
             message: JSON.stringify(shape),
