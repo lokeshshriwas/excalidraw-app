@@ -3,6 +3,7 @@ import { v4 as uuidv4 } from 'uuid';
 
 export type Shapes =
   | {
+      id : string,
       type: "rect";
       x: number;
       y: number;
@@ -10,6 +11,7 @@ export type Shapes =
       height: number;
     }
   | {
+      id : string,
       type: "line";
       x1: number;
       y1: number;
@@ -17,18 +19,20 @@ export type Shapes =
       y2: number;
     }
   | {
+      id : string,
       type: "circle";
       x: number;
       y: number;
       radius: number;
     }
   | {
+      id : string,
       type: "text";
       x: number;
       y: number;
       text: string;
     }
-  | { type: "pencil"; x1: number; y1: number; x2: number; y2: number };
+  | { id : string, type: "pencil"; x1: number; y1: number; x2: number; y2: number };
 
 export type Tool = "rect" | "line" | "circle" | "text" | "pencil" | "pan";
 
@@ -55,6 +59,10 @@ export class Game {
     x: window.innerWidth / 2,
     y: window.innerHeight / 2,
   };
+  private pressedKey = new Set();
+  private currentPencilStrokeId: string | null = null;
+  private undoStack: Shapes[][] = [];
+  private redoStack: Shapes[][] = [];
 
   constructor(
     canvas: HTMLCanvasElement,
@@ -115,7 +123,27 @@ export class Game {
           this.draw();
         }
 
-      } 
+      } else if (message.type === "undo") {
+        const shapesToUndo = this.existingShapes.filter(
+          (shape) => shape.id === message.id
+        );
+        this.redoStack.push(shapesToUndo);
+        this.existingShapes = this.existingShapes.filter(
+          (shape) => shape.id !== message.id
+        );
+        this.draw();
+      } else if (message.type === "redo") {
+        const shapesToRedo = this.redoStack.find(
+          (shapes) => shapes[0].id === message.id
+        );
+        if (shapesToRedo) {
+          this.existingShapes.push(...shapesToRedo);
+          this.redoStack = this.redoStack.filter(
+            (shapes) => shapes[0].id !== message.id
+          );
+          this.draw();
+        }
+      }
     };
   }
 
@@ -192,6 +220,7 @@ export class Game {
       this.text = "";
       this.canvas.focus(); // So we can capture keyboard input
     } else if (this.selectedTool === "pencil") {
+      this.currentPencilStrokeId = uuidv4();
       const worldCoords = this.getWorldCoordinates(e.clientX, e.clientY);
       this.startX = worldCoords.x;
       this.startY = worldCoords.y;
@@ -203,26 +232,31 @@ export class Game {
 
     this.clicked = false;
     if (this.previewShape && this.selectedTool !== "pencil") {
+      const milliSecondDate = Date.now();
       this.existingShapes.push(this.previewShape);
       this.socket.send(
         JSON.stringify({
-          id : uuidv4(),
+          id : this.previewShape.id,
           roomId: this.roomId,
           type: "chat",
           message: JSON.stringify(this.previewShape),
+          timeStamp: new Date(milliSecondDate),
         })
       );
       this.previewShape = null;
     } else if (this.selectedTool === "pencil") {
+      const milliSecondDate = Date.now();
       this.socket.send(
         JSON.stringify({
-          id : uuidv4(),
+          id : this.currentPencilStrokeId,
           roomId: this.roomId,
           type: "chat",
           message: JSON.stringify(this.newSegment),
+          timeStamp: new Date(milliSecondDate),
         })
       );
       this.newSegment = [];
+      this.currentPencilStrokeId = null;
       this.draw();
     }
   };
@@ -236,9 +270,10 @@ export class Game {
       const worldCoords = this.getWorldCoordinates(e.clientX, e.clientY);
       const width = worldCoords.x - this.startX;
       const height = worldCoords.y - this.startY;
-
+      const id = uuidv4();
       if (this.selectedTool === "rect") {
         this.previewShape = {
+          id,
           type: "rect",
           x: this.startX,
           y: this.startY,
@@ -247,6 +282,7 @@ export class Game {
         };
       } else if (this.selectedTool === "line") {
         this.previewShape = {
+          id,
           type: "line",
           x1: this.startX,
           y1: this.startY,
@@ -255,6 +291,7 @@ export class Game {
         };
       } else if (this.selectedTool === "circle") {
         this.previewShape = {
+          id,
           type: "circle",
           x: this.startX,
           y: this.startY,
@@ -262,6 +299,7 @@ export class Game {
         };
       } else if (this.selectedTool === "pencil") {
         const newSegment: Shapes = {
+          id : this.currentPencilStrokeId!,
           type: "pencil",
           x1: this.startX,
           y1: this.startY,
@@ -281,9 +319,60 @@ export class Game {
   };
 
   onKeyDownHandler = (e: KeyboardEvent) => {
+    if (this.selectedTool !== "text") {
+      this.pressedKey.add(e.key);
+      if (
+        e.ctrlKey &&
+        this.pressedKey.has("z") &&
+        this.existingShapes.length > 0
+      ) {
+        const lastShape = this.existingShapes[this.existingShapes.length - 1];
+        const lastShapeId = lastShape.id;
+        const shapesToUndo = this.existingShapes.filter(
+          (shape) => shape.id === lastShapeId
+        );
+        this.undoStack.push(shapesToUndo);
+        this.existingShapes = this.existingShapes.filter(
+          (shape) => shape.id !== lastShapeId
+        );
+        this.socket.send(
+          JSON.stringify({
+            id: lastShapeId,
+            roomId: this.roomId,
+            type: "undo",
+          })
+        );
+        this.pressedKey.clear();
+        this.draw();
+      } else if (
+        e.ctrlKey &&
+        this.pressedKey.has("y") &&
+        this.undoStack.length > 0
+      ) {
+        const shapesToRedo = this.undoStack.pop();
+        if (shapesToRedo) {
+          this.redoStack.push(shapesToRedo);
+          this.existingShapes.push(...shapesToRedo);
+          this.socket.send(
+            JSON.stringify({
+              id: shapesToRedo[0].id,
+              roomId: this.roomId,
+              type: "redo",
+            })
+          );
+        }
+        this.pressedKey.clear();
+        this.draw();
+      }
+    }
+
+  
     if (this.selectedTool === "text" && this.clicked) {
+      const id = uuidv4();
       if (e.key === "Enter") {
+        const milliSecondDate = Date.now();
         const shape: Shapes = {
+          id,
           type: "text",
           x: this.startX,
           y: this.startY,
@@ -293,10 +382,11 @@ export class Game {
         this.previewShape = null;
         this.socket.send(
           JSON.stringify({
-            id : uuidv4(),
+            id : shape.id,
             roomId: this.roomId,
             type: "chat",
             message: JSON.stringify(shape),
+            timeStamp: new Date(milliSecondDate)
           })
         );
 
@@ -309,6 +399,7 @@ export class Game {
         this.text += e.key;
       }
       this.previewShape= {
+        id,
         type: "text",
         x: this.startX,
         y: this.startY,

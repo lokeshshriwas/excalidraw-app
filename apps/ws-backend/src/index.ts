@@ -6,12 +6,25 @@ import { prismaClient } from "@repo/db";
 const wss = new WebSocketServer({ port: 9090 });
 
 interface QueuedMessage {
-  id : string
+  id: string;
   roomId: number;
   message: string;
   userId: string;
+  timeStamp : Date
 }
 
+type DrawingAction = {
+  id: string;
+  message: string;
+  timeStamp: Date
+};
+const roomHistory = new Map<
+  string,
+  {
+    undoStack: DrawingAction[];
+    redoStack: DrawingAction[];
+  }
+>();
 const roomConnections = new Map<string, WebSocket[]>();
 const userConnections = new Map<WebSocket, string>();
 const messageQueue = new Map<string, QueuedMessage>();
@@ -53,10 +66,11 @@ async function saveMessagesToDatabase() {
   try {
     await prismaClient.chat.createMany({
       data: messages.map((message) => ({
-        id : message.id,
+        id: message.id,
         roomId: message.roomId,
         message: message.message,
         userId: message.userId,
+        timeStamp : message.timeStamp
       })),
     });
     console.log("Messages saved");
@@ -110,13 +124,61 @@ wss.on("connection", function connection(ws, request) {
       const id = parsedData.id;
       const roomId = parsedData.roomId;
       const message = parsedData.message;
+      const timeStamp = parsedData.timeStamp;
+      const connections = roomConnections.get(roomId);
+      if (!roomHistory.has(roomId)) {
+        roomHistory.set(roomId, {
+          undoStack: [],
+          redoStack: [],
+        });
+      }
+      const action = { id, message, timeStamp };
+      roomHistory.get(roomId)?.undoStack.push(action);
+      roomHistory.get(roomId)!.redoStack = [];
+      if (connections) {
+        connections.forEach((connection) => {
+          connection.send(
+            JSON.stringify({ id, type: "chat", roomId, message, timeStamp})
+          );
+        });
+      }
+      messageQueue.set(`${roomId}:${message}`, { id, roomId, message, userId, timeStamp });
+    }
+
+    if (parsedData.type === "undo") {
+      const roomId = parsedData.roomId;
       const connections = roomConnections.get(roomId);
       if (connections) {
         connections.forEach((connection) => {
-          connection.send(JSON.stringify({ id, type: "chat", roomId, message }));
+          if (connection !== ws) {
+            connection.send(
+              JSON.stringify({
+                type: "undo",
+                id: parsedData.id,
+                roomId,
+              })
+            );
+          }
         });
       }
-      messageQueue.set(`${roomId}:${message}`, { id ,roomId, message, userId });
+    }
+
+    if (parsedData.type === "redo") {
+      const roomId = parsedData.roomId;
+      const connections = roomConnections.get(roomId);
+      if (connections) {
+        connections.forEach((connection) => {
+          if (connection !== ws) {
+            connection.send(
+              JSON.stringify({
+                type: "redo",
+                id: parsedData.id,
+                roomId,
+              })
+            );
+          }
+        });
+      }
     }
   });
 
@@ -135,8 +197,8 @@ wss.on("connection", function connection(ws, request) {
   });
 });
 
-process.on('SIGTERM', async () => {
-  console.log('Shutting down...');
+process.on("SIGTERM", async () => {
+  console.log("Shutting down...");
   await saveMessagesToDatabase(); // Save any remaining messages
   await prismaClient.$disconnect();
   wss.close();

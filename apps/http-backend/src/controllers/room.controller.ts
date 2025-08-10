@@ -32,7 +32,7 @@ export const getRecentMessages  = async (req: any, res: any) => {
             roomId: Number(roomId)
         },
         orderBy: {
-            id: 'desc'
+          timeStamp: 'asc'
         },
         take: 1000
     })

@@ -25,6 +25,7 @@ export async function getExistingShapes(roomId: number | null) {
         // If messageData is an array of shapes
         if (Array.isArray(messageData)) {
           return messageData.map((shape) => ({
+            id: shape.id,
             type: shape.type,
             x1: shape.x1 ?? null,
             y1: shape.y1 ?? null,
@@ -32,6 +33,7 @@ export async function getExistingShapes(roomId: number | null) {
             y2: shape.y2 ?? null
           }));
         }
+        console.log("Message data is not an array:", messageData);
         return [messageData];
       } catch (err) {
         console.error("Error parsing message:", msg.message, err);
