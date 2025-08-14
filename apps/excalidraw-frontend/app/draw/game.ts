@@ -1,9 +1,10 @@
+import { isNearForPencil, isNearCircle, isNearForText, isNearRectangle } from "../utility/gameHelpers";
 import { getExistingShapes } from "./http";
-import { v4 as uuidv4 } from 'uuid';
+import { v4 as uuidv4 } from "uuid";
 
 export type Shapes =
   | {
-      id : string,
+      id: string;
       type: "rect";
       x: number;
       y: number;
@@ -11,7 +12,7 @@ export type Shapes =
       height: number;
     }
   | {
-      id : string,
+      id: string;
       type: "line";
       x1: number;
       y1: number;
@@ -19,22 +20,36 @@ export type Shapes =
       y2: number;
     }
   | {
-      id : string,
+      id: string;
       type: "circle";
       x: number;
       y: number;
       radius: number;
     }
   | {
-      id : string,
+      id: string;
       type: "text";
       x: number;
       y: number;
       text: string;
     }
-  | { id : string, type: "pencil"; x1: number; y1: number; x2: number; y2: number };
+  | {
+      id: string;
+      type: "pencil";
+      x1: number;
+      y1: number;
+      x2: number;
+      y2: number;
+    };
 
-export type Tool = "rect" | "line" | "circle" | "text" | "pencil" | "pan" | "erase";
+export type Tool =
+  | "rect"
+  | "line"
+  | "circle"
+  | "text"
+  | "pencil"
+  | "pan"
+  | "erase";
 
 export class Game {
   private canvas: HTMLCanvasElement;
@@ -111,17 +126,16 @@ export class Game {
       const message = JSON.parse(event.data);
       if (message.type === "chat") {
         const newMessage = JSON.parse(message.message);
-        if(Array.isArray(newMessage)) {
+        if (Array.isArray(newMessage)) {
           newMessage.map((shape) => {
             this.existingShapes.push(shape);
-          })
+          });
           this.draw();
         } else {
           const parsedMessage = JSON.parse(message.message);
           this.existingShapes.push(parsedMessage);
           this.draw();
         }
-
       } else if (message.type === "undo") {
         const shapesToUndo = this.existingShapes.filter(
           (shape) => shape.id === message.id
@@ -179,7 +193,12 @@ export class Game {
     if (this.previewShape) {
       this.ctx.strokeStyle = "red";
       if (this.previewShape.type === "rect") {
-        this.ctx.strokeRect(this.previewShape.x, this.previewShape.y, this.previewShape.width, this.previewShape.height);
+        this.ctx.strokeRect(
+          this.previewShape.x,
+          this.previewShape.y,
+          this.previewShape.width,
+          this.previewShape.height
+        );
       } else if (this.previewShape.type === "line") {
         this.ctx.beginPath();
         this.ctx.moveTo(this.previewShape.x1, this.previewShape.y1);
@@ -187,27 +206,37 @@ export class Game {
         this.ctx.stroke();
       } else if (this.previewShape.type === "circle") {
         this.ctx.beginPath();
-        this.ctx.arc(this.previewShape.x, this.previewShape.y, this.previewShape.radius, 0, 2 * Math.PI);
+        this.ctx.arc(
+          this.previewShape.x,
+          this.previewShape.y,
+          this.previewShape.radius,
+          0,
+          2 * Math.PI
+        );
         this.ctx.stroke();
       } else if (this.previewShape.type === "text") {
         this.ctx.font = "20px Arial";
         this.ctx.fillStyle = "red";
-        this.ctx.fillText(this.previewShape.text, this.previewShape.x, this.previewShape.y);
+        this.ctx.fillText(
+          this.previewShape.text,
+          this.previewShape.x,
+          this.previewShape.y
+        );
       }
     }
   }
 
-  onPointerDown = (e : MouseEvent) => {
+  onPointerDown = (e: MouseEvent) => {
     if (this.selectedTool === "pan") {
       this.isDragging = true;
       this.dragStart.x = e.clientX / this.cameraZoom - this.cameraOffset.x;
       this.dragStart.y = e.clientY / this.cameraZoom - this.cameraOffset.y;
     }
-  }
+  };
 
-  onPointerUp = (e : MouseEvent)=> {
+  onPointerUp = (e: MouseEvent) => {
     this.isDragging = false;
-  }
+  };
 
   mouseDownHandler = (e: MouseEvent) => {
     this.clicked = true;
@@ -235,7 +264,7 @@ export class Game {
       this.existingShapes.push(this.previewShape);
       this.socket.send(
         JSON.stringify({
-          id : this.previewShape.id,
+          id: this.previewShape.id,
           roomId: this.roomId,
           type: "chat",
           message: JSON.stringify(this.previewShape),
@@ -247,7 +276,7 @@ export class Game {
       const milliSecondDate = Date.now();
       this.socket.send(
         JSON.stringify({
-          id : this.currentPencilStrokeId,
+          id: this.currentPencilStrokeId,
           roomId: this.roomId,
           type: "chat",
           message: JSON.stringify(this.newSegment),
@@ -298,7 +327,7 @@ export class Game {
         };
       } else if (this.selectedTool === "pencil") {
         const newSegment: Shapes = {
-          id : this.currentPencilStrokeId!,
+          id: this.currentPencilStrokeId!,
           type: "pencil",
           x1: this.startX,
           y1: this.startY,
@@ -309,24 +338,58 @@ export class Game {
         this.existingShapes.push(newSegment);
         this.newSegment.push(newSegment);
 
-        // Update for next segment
         this.startX = worldCoords.x;
         this.startY = worldCoords.y;
       } else if (this.selectedTool === "erase") {
-      const worldCoords = this.getWorldCoordinates(e.clientX, e.clientY);
-      const shapesToErase = this.existingShapes.filter((shape) => {
-      if (shape.type === "pencil") {
-        return this.isNear(worldCoords.x, worldCoords.y, shape.x1, shape.y1, shape.x2, shape.y2);
-      } 
-    // TODO: add logic for other shape types if needed
-    return false;
-  });
+        const worldCoords = this.getWorldCoordinates(e.clientX, e.clientY);
+        const shapesToErase = this.existingShapes.filter((shape) => {
+          if (shape.type === "pencil" || shape.type === "line") {
+            return isNearForPencil(
+              worldCoords.x,
+              worldCoords.y,
+              shape.x1,
+              shape.y1,
+              shape.x2,
+              shape.y2
+            );
+          } else if (shape.type === "circle") {
+            return isNearCircle(
+              worldCoords.x,
+              worldCoords.y,
+              shape.x,
+              shape.y,
+              shape.radius
+            );
+          } else if (shape.type === "text"){
+            return isNearForText(
+              worldCoords.x,
+              worldCoords.y,
+              shape.x,
+              shape.y,
+              shape.text,
+              this.ctx
+            );
+          } else if (shape.type === "rect") {
+            return isNearRectangle(
+              worldCoords.x,
+              worldCoords.y,
+              shape.x,
+              shape.y,
+              shape.width,
+              shape.height
+            );
+          }
 
-  if (shapesToErase.length > 0) {
-    this.existingShapes = this.existingShapes.filter((shape) => shape.id !== shapesToErase[0].id);
-    this.draw();
-  }
-}
+          return false;
+        });
+
+        if (shapesToErase.length > 0) {
+          this.existingShapes = this.existingShapes.filter(
+            (shape) => shape.id !== shapesToErase[0].id
+          );
+          this.draw();
+        }
+      }
 
       this.draw();
     }
@@ -380,7 +443,6 @@ export class Game {
       }
     }
 
-  
     if (this.selectedTool === "text" && this.clicked) {
       const id = uuidv4();
       if (e.key === "Enter") {
@@ -396,11 +458,11 @@ export class Game {
         this.previewShape = null;
         this.socket.send(
           JSON.stringify({
-            id : shape.id,
+            id: shape.id,
             roomId: this.roomId,
             type: "chat",
             message: JSON.stringify(shape),
-            timeStamp: new Date(milliSecondDate)
+            timeStamp: new Date(milliSecondDate),
           })
         );
 
@@ -412,13 +474,13 @@ export class Game {
       } else if (e.key.length === 1) {
         this.text += e.key;
       }
-      this.previewShape= {
+      this.previewShape = {
         id,
         type: "text",
         x: this.startX,
         y: this.startY,
-        text: this.text
-      }
+        text: this.text,
+      };
       this.draw();
     }
   };
@@ -434,7 +496,7 @@ export class Game {
     // Clamp zoom between MIN and MAX
     this.cameraZoom = Math.min(this.cameraZoom, this.MAX_ZOOM);
     this.cameraZoom = Math.max(this.cameraZoom, this.MIN_ZOOM);
-    this.clearCanvas()
+    this.clearCanvas();
     this.draw(); // Re-render immediately
   };
 
@@ -455,8 +517,14 @@ export class Game {
   };
 
   getWorldCoordinates(x: number, y: number) {
-    const worldX = (x - this.canvas.width / 2) / this.cameraZoom - this.cameraOffset.x + this.canvas.width / 2;
-    const worldY = (y - this.canvas.height / 2) / this.cameraZoom - this.cameraOffset.y + this.canvas.height / 2;
+    const worldX =
+      (x - this.canvas.width / 2) / this.cameraZoom -
+      this.cameraOffset.x +
+      this.canvas.width / 2;
+    const worldY =
+      (y - this.canvas.height / 2) / this.cameraZoom -
+      this.cameraOffset.y +
+      this.canvas.height / 2;
     return { x: worldX, y: worldY };
   }
 
@@ -488,44 +556,4 @@ export class Game {
     });
     window.addEventListener("resize", this.resizeHandler);
   }
-
-  isNear(
-      x: number, y: number,          
-      x1: number, y1: number,
-      x2: number, y2: number,
-      threshold: number = 5
-    ): boolean {
-      const A = x - x1;
-      const B = y - y1;
-      const C = x2 - x1;
-      const D = y2 - y1;
-
-      const dot = A * C + B * D;
-      const lenSq = C * C + D * D;
-
-      let param = -1;
-
-      if (lenSq !== 0) {
-        param = dot / lenSq; 
-      }
-
-      let closestX, closestY;
-
-      if (param < 0) {
-        closestX = x1;
-        closestY = y1;
-      } else if (param > 1) {
-        closestX = x2;
-        closestY = y2;
-      } else {
-        closestX = x1 + param * C;
-        closestY = y1 + param * D;
-      }
-
-      const dx = x - closestX;
-      const dy = y - closestY;
-      return Math.sqrt(dx * dx + dy * dy) < threshold;
-  }
-
-
 }

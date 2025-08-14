@@ -37,4 +37,58 @@ export const  isNearForPencil = (
     const dx = x - closestX;
     const dy = y - closestY;
     return Math.sqrt(dx * dx + dy * dy) < threshold;
-  }
+}
+
+export const  isNearCircle = (
+  x: number, y: number,
+  cx: number, cy: number,
+  radius: number,
+  threshold: number = 5
+): boolean => {
+  const dx = x - cx;
+  const dy = y - cy;
+  const dist = Math.sqrt(dx * dx + dy * dy);
+  return Math.abs(dist - radius) <= threshold;
+}
+
+export const  isNearForText = (
+  x: number,
+  y: number,
+  cx: number,
+  cy: number,
+  text: string,
+  ctx: CanvasRenderingContext2D,
+  threshold: number = 5
+): boolean =>{
+  const metrics = ctx.measureText(text);
+  const textWidth = metrics.width;
+  const textHeight = parseInt(ctx.font, 20) 
+  return (
+    x >= cx - threshold &&
+    x <= cx + textWidth + threshold &&
+    y >= cy - textHeight - threshold &&
+    y <= cy + threshold
+  );
+}
+
+
+export const isNearRectangle = (
+  x: number,
+  y: number,
+  rx: number,
+  ry: number,
+  width: number,
+  height: number,
+  threshold: number = 5
+): boolean => {
+  const left = rx;
+  const right = rx + width;
+  const top = ry;
+  const bottom = ry + height;
+  const nearLeft = Math.abs(x - left) <= threshold && y >= top - threshold && y <= bottom + threshold;
+  const nearRight = Math.abs(x - right) <= threshold && y >= top - threshold && y <= bottom + threshold;
+  const nearTop = Math.abs(y - top) <= threshold && x >= left - threshold && x <= right + threshold;
+  const nearBottom = Math.abs(y - bottom) <= threshold && x >= left - threshold && x <= right + threshold;
+
+  return nearLeft || nearRight || nearTop || nearBottom;
+};
