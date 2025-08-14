@@ -34,7 +34,7 @@ export type Shapes =
     }
   | { id : string, type: "pencil"; x1: number; y1: number; x2: number; y2: number };
 
-export type Tool = "rect" | "line" | "circle" | "text" | "pencil" | "pan";
+export type Tool = "rect" | "line" | "circle" | "text" | "pencil" | "pan" | "erase";
 
 export class Game {
   private canvas: HTMLCanvasElement;
@@ -313,7 +313,22 @@ export class Game {
         // Update for next segment
         this.startX = worldCoords.x;
         this.startY = worldCoords.y;
-      }
+      } else if (this.selectedTool === "erase") {
+      const worldCoords = this.getWorldCoordinates(e.clientX, e.clientY);
+      const shapesToErase = this.existingShapes.filter((shape) => {
+      if (shape.type === "pencil") {
+        return this.isNear(worldCoords.x, worldCoords.y, shape.x1, shape.y1, shape.x2, shape.y2);
+      } 
+    // TODO: add logic for other shape types if needed
+    return false;
+  });
+
+  if (shapesToErase.length > 0) {
+    this.existingShapes = this.existingShapes.filter((shape) => shape.id !== shapesToErase[0].id);
+    this.draw();
+  }
+}
+
       this.draw();
     }
   };
@@ -331,7 +346,7 @@ export class Game {
         const shapesToUndo = this.existingShapes.filter(
           (shape) => shape.id === lastShapeId
         );
-        this.undoStack.push(shapesToUndo);
+        this.redoStack.push(shapesToUndo);
         this.existingShapes = this.existingShapes.filter(
           (shape) => shape.id !== lastShapeId
         );
@@ -346,12 +361,11 @@ export class Game {
         this.draw();
       } else if (
         e.ctrlKey &&
-        this.pressedKey.has("y") &&
-        this.undoStack.length > 0
+        this.pressedKey.has("y")
       ) {
-        const shapesToRedo = this.undoStack.pop();
+        const shapesToRedo = this.redoStack.pop();
         if (shapesToRedo) {
-          this.redoStack.push(shapesToRedo);
+          // this.redoStack.push(shapesToRedo);
           this.existingShapes.push(...shapesToRedo);
           this.socket.send(
             JSON.stringify({
@@ -474,4 +488,44 @@ export class Game {
     });
     window.addEventListener("resize", this.resizeHandler);
   }
+
+  isNear(
+      x: number, y: number,          
+      x1: number, y1: number,
+      x2: number, y2: number,
+      threshold: number = 5
+    ): boolean {
+      const A = x - x1;
+      const B = y - y1;
+      const C = x2 - x1;
+      const D = y2 - y1;
+
+      const dot = A * C + B * D;
+      const lenSq = C * C + D * D;
+
+      let param = -1;
+
+      if (lenSq !== 0) {
+        param = dot / lenSq; 
+      }
+
+      let closestX, closestY;
+
+      if (param < 0) {
+        closestX = x1;
+        closestY = y1;
+      } else if (param > 1) {
+        closestX = x2;
+        closestY = y2;
+      } else {
+        closestX = x1 + param * C;
+        closestY = y1 + param * D;
+      }
+
+      const dx = x - closestX;
+      const dy = y - closestY;
+      return Math.sqrt(dx * dx + dy * dy) < threshold;
+  }
+
+
 }

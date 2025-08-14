@@ -18,11 +18,14 @@ type DrawingAction = {
   message: string;
   timeStamp: Date
 };
+
+type undoRedoId = string;
+
 const roomHistory = new Map<
   string,
   {
-    undoStack: DrawingAction[];
-    redoStack: DrawingAction[];
+    undoStack: undoRedoId[];
+    redoStack: undoRedoId[];
   }
 >();
 const roomConnections = new Map<string, WebSocket[]>();
@@ -132,9 +135,6 @@ wss.on("connection", function connection(ws, request) {
           redoStack: [],
         });
       }
-      const action = { id, message, timeStamp };
-      roomHistory.get(roomId)?.undoStack.push(action);
-      roomHistory.get(roomId)!.redoStack = [];
       if (connections) {
         connections.forEach((connection) => {
           connection.send(
@@ -148,6 +148,13 @@ wss.on("connection", function connection(ws, request) {
     if (parsedData.type === "undo") {
       const roomId = parsedData.roomId;
       const connections = roomConnections.get(roomId);
+       if (!roomHistory.has(roomId)) {
+        roomHistory.set(roomId, {
+          undoStack: [],
+          redoStack: [],
+        });
+      }
+      roomHistory.get(roomId)?.undoStack.push(parsedData.id);
       if (connections) {
         connections.forEach((connection) => {
           if (connection !== ws) {
@@ -166,6 +173,8 @@ wss.on("connection", function connection(ws, request) {
     if (parsedData.type === "redo") {
       const roomId = parsedData.roomId;
       const connections = roomConnections.get(roomId);
+      roomHistory.get(roomId)?.redoStack.push(parsedData.id);
+      roomHistory.get(roomId)?.undoStack.filter((id) => id !== parsedData.id);
       if (connections) {
         connections.forEach((connection) => {
           if (connection !== ws) {
@@ -182,19 +191,38 @@ wss.on("connection", function connection(ws, request) {
     }
   });
 
-  ws.on("close", () => {
-    const userId = userConnections.get(ws);
-    if (userId) {
-      roomConnections.forEach((connections, roomId) => {
-        roomConnections.set(
-          roomId,
-          connections.filter((connection) => connection !== ws)
-        );
-      });
-      userConnections.delete(ws);
-      console.log("User disconnected and removed");
+ws.on("close", async () => {
+  const userId = userConnections.get(ws);
+  if (!userId) return;
+
+  for (const [roomId, connections] of roomConnections.entries()) {
+    // Remove this socket from the room
+    const updatedConnections = connections.filter(conn => conn !== ws);
+    roomConnections.set(roomId, updatedConnections);
+
+    // If room is now empty → delete undoStack items
+    if (updatedConnections.length === 0) {
+      const undoStack = roomHistory.get(roomId)?.undoStack || [];
+      console.log("undostack", undoStack)
+      if (undoStack.length > 0) {
+        try {
+          const resp = await prismaClient.chat.deleteMany({
+            where: {
+              id: { in: undoStack},
+            }
+          });
+          console.log(`Deleted ${resp.count} items for room ${roomId}`);
+        } catch (err) {
+          console.error(`Failed to delete for room ${roomId}:`, err);
+        }
+      }
     }
-  });
+  }
+
+  userConnections.delete(ws);
+  console.log("User disconnected and removed");
+});
+
 });
 
 process.on("SIGTERM", async () => {

@@ -7,6 +7,7 @@ import { LuCircle } from "react-icons/lu";
 import { IoText } from "react-icons/io5";
 import { LuPencil } from "react-icons/lu";
 import { TfiHandDrag } from "react-icons/tfi";
+import { LuEraser } from "react-icons/lu";
 
 const Canvas = ({
   roomId,
@@ -85,6 +86,9 @@ function Topbar({selectedTool, setSelectedTool}: {
                 <IconButton onClick={() => {
                     setSelectedTool("pan")
                 }} activated={selectedTool === "pan"} icon={<TfiHandDrag />}></IconButton>
+                <IconButton onClick={() => {
+                    setSelectedTool("erase")
+                }} activated={selectedTool === "erase"} icon={<LuEraser />}></IconButton>
             </div>
         </div>
 }
