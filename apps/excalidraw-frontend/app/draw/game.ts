@@ -61,7 +61,6 @@ export class Game {
   };
   private pressedKey = new Set();
   private currentPencilStrokeId: string | null = null;
-  private undoStack: Shapes[][] = [];
   private redoStack: Shapes[][] = [];
 
   constructor(
@@ -361,7 +360,8 @@ export class Game {
         this.draw();
       } else if (
         e.ctrlKey &&
-        this.pressedKey.has("y")
+        this.pressedKey.has("y") &&
+        this.redoStack.length > 0
       ) {
         const shapesToRedo = this.redoStack.pop();
         if (shapesToRedo) {
