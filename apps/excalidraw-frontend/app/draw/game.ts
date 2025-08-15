@@ -1,55 +1,7 @@
 import { isNearForPencil, isNearCircle, isNearForText, isNearRectangle } from "../utility/gameHelpers";
+import { Shapes, Tool } from "../utility/gameTypes";
 import { getExistingShapes } from "./http";
 import { v4 as uuidv4 } from "uuid";
-
-export type Shapes =
-  | {
-      id: string;
-      type: "rect";
-      x: number;
-      y: number;
-      width: number;
-      height: number;
-    }
-  | {
-      id: string;
-      type: "line";
-      x1: number;
-      y1: number;
-      x2: number;
-      y2: number;
-    }
-  | {
-      id: string;
-      type: "circle";
-      x: number;
-      y: number;
-      radius: number;
-    }
-  | {
-      id: string;
-      type: "text";
-      x: number;
-      y: number;
-      text: string;
-    }
-  | {
-      id: string;
-      type: "pencil";
-      x1: number;
-      y1: number;
-      x2: number;
-      y2: number;
-    };
-
-export type Tool =
-  | "rect"
-  | "line"
-  | "circle"
-  | "text"
-  | "pencil"
-  | "pan"
-  | "erase";
 
 export class Game {
   private canvas: HTMLCanvasElement;
@@ -77,6 +29,26 @@ export class Game {
   private pressedKey = new Set();
   private currentPencilStrokeId: string | null = null;
   private redoStack: Shapes[][] = [];
+  private eraseShape(shapeId: string): void {
+    const shapesToUndo = this.existingShapes.filter(
+      (shape) => shape.id === shapeId
+    );
+    
+    if (shapesToUndo.length > 0) {
+      this.redoStack.push(shapesToUndo);
+      this.existingShapes = this.existingShapes.filter(
+        (shape) => shape.id !== shapeId
+      );
+      this.socket.send(
+        JSON.stringify({
+          id: shapeId,
+          roomId: this.roomId,
+          type: "undo",
+        })
+      );
+      this.draw();
+    }
+  }
 
   constructor(
     canvas: HTMLCanvasElement,
@@ -299,6 +271,7 @@ export class Game {
       const width = worldCoords.x - this.startX;
       const height = worldCoords.y - this.startY;
       const id = uuidv4();
+      
       if (this.selectedTool === "rect") {
         this.previewShape = {
           id,
@@ -341,10 +314,12 @@ export class Game {
         this.startX = worldCoords.x;
         this.startY = worldCoords.y;
       } else if (this.selectedTool === "erase") {
-        const worldCoords = this.getWorldCoordinates(e.clientX, e.clientY);
-        const shapesToErase = this.existingShapes.filter((shape) => {
+        // Check each shape for erasure
+        for (const shape of this.existingShapes) {
+          let shouldErase = false;
+          
           if (shape.type === "pencil" || shape.type === "line") {
-            return isNearForPencil(
+            shouldErase = isNearForPencil(
               worldCoords.x,
               worldCoords.y,
               shape.x1,
@@ -353,15 +328,15 @@ export class Game {
               shape.y2
             );
           } else if (shape.type === "circle") {
-            return isNearCircle(
+            shouldErase = isNearCircle(
               worldCoords.x,
               worldCoords.y,
               shape.x,
               shape.y,
               shape.radius
             );
-          } else if (shape.type === "text"){
-            return isNearForText(
+          } else if (shape.type === "text") {
+            shouldErase = isNearForText(
               worldCoords.x,
               worldCoords.y,
               shape.x,
@@ -370,7 +345,7 @@ export class Game {
               this.ctx
             );
           } else if (shape.type === "rect") {
-            return isNearRectangle(
+            shouldErase = isNearRectangle(
               worldCoords.x,
               worldCoords.y,
               shape.x,
@@ -379,15 +354,11 @@ export class Game {
               shape.height
             );
           }
-
-          return false;
-        });
-
-        if (shapesToErase.length > 0) {
-          this.existingShapes = this.existingShapes.filter(
-            (shape) => shape.id !== shapesToErase[0].id
-          );
-          this.draw();
+          
+          if (shouldErase) {
+            this.eraseShape(shape.id);
+            break; // Exit after erasing first matching shape
+          }
         }
       }
 
@@ -426,6 +397,7 @@ export class Game {
         this.pressedKey.has("y") &&
         this.redoStack.length > 0
       ) {
+        console.log("redoStack", this.redoStack)
         const shapesToRedo = this.redoStack.pop();
         if (shapesToRedo) {
           // this.redoStack.push(shapesToRedo);

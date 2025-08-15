@@ -203,7 +203,6 @@ ws.on("close", async () => {
     // If room is now empty → delete undoStack items
     if (updatedConnections.length === 0) {
       const undoStack = roomHistory.get(roomId)?.undoStack || [];
-      console.log("undostack", undoStack)
       if (undoStack.length > 0) {
         try {
           const resp = await prismaClient.chat.deleteMany({
