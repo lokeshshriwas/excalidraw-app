@@ -1,31 +1,39 @@
 import React, { useEffect } from "react";
-import { LuMinus } from "react-icons/lu";
-import { Game, Tool } from "../draw/game";
-import { IconButton } from "./IconButton";
-import { LuRectangleHorizontal } from "react-icons/lu";
-import { LuCircle } from "react-icons/lu";
+import { LuMinus, LuRectangleHorizontal, LuCircle, LuPencil, LuEraser } from "react-icons/lu";
 import { IoText } from "react-icons/io5";
-import { LuPencil } from "react-icons/lu";
 import { TfiHandDrag } from "react-icons/tfi";
-import { LuEraser } from "react-icons/lu";
+import { Game } from "../draw/game";
+import { IconButton } from "./IconButton";
+import { useRouter } from "next/navigation";
+import { Tool } from "../utility/gameTypes";
 
 const Canvas = ({
   roomId,
   socket,
+  legitUser,
 }: {
   roomId: number | null;
   socket: WebSocket;
+  legitUser: boolean;
 }) => {
+  const router = useRouter();
   const canvasRef = React.useRef<HTMLCanvasElement>(null);
   const [game, setGame] = React.useState<Game | null>(null);
   const [selectedTool, setSelectedTool] = React.useState<Tool>("pan");
+
+  // Handle navigation based on legitUser status
+  useEffect(() => {
+    if (!legitUser) {
+      router.push("/login");
+    }
+  }, [legitUser, router]);
 
   useEffect(() => {
     game?.setTool(selectedTool);
   }, [selectedTool, game]);
 
   useEffect(() => {
-    if (!canvasRef.current || roomId === null) return;
+    if (!canvasRef.current || roomId === null || !legitUser) return;
 
     const g = new Game(canvasRef.current, roomId, socket);
     setGame(g);
@@ -33,7 +41,12 @@ const Canvas = ({
     return () => {
       g.destroy();
     };
-  }, [canvasRef]);
+  }, [canvasRef, roomId, socket, legitUser]);
+
+  // Show loading while navigation is happening
+  if (!legitUser) {
+    return <div className="text-center p-4">Redirecting...</div>;
+  }
 
   return (
     <div>
@@ -48,47 +61,64 @@ const Canvas = ({
         }}
       />
       <Topbar setSelectedTool={setSelectedTool} selectedTool={selectedTool} />
-    </div> 
+    </div>
   );
 };
 
 export default Canvas;
 
-function Topbar({selectedTool, setSelectedTool}: {
-    selectedTool: Tool,
-    setSelectedTool: (s: Tool) => void
+function Topbar({
+  selectedTool,
+  setSelectedTool,
+}: {
+  selectedTool: Tool;
+  setSelectedTool: (s: Tool) => void;
 }) {
-    return <div style={{
-            position: "fixed",
-            top: 10,
-            left: 10,
-        }}>
-            <div  style={{display: "flex", gap: "10px"}}>
-                <IconButton 
-                    onClick={() => {
-                        setSelectedTool("line")
-                    }}
-                    activated={selectedTool === "line"}
-                    icon={<LuMinus />}
-                />
-                <IconButton onClick={() => {
-                    setSelectedTool("rect")
-                }} activated={selectedTool === "rect"} icon={<LuRectangleHorizontal />} ></IconButton>
-                <IconButton onClick={() => {
-                    setSelectedTool("circle")
-                }} activated={selectedTool === "circle"} icon={<LuCircle />}></IconButton>
-                <IconButton onClick={() => {
-                    setSelectedTool("text")
-                }} activated={selectedTool === "text"} icon={<IoText />}></IconButton>
-                <IconButton onClick={() => {
-                    setSelectedTool("pencil")
-                }} activated={selectedTool === "pencil"} icon={<LuPencil />}></IconButton>
-                <IconButton onClick={() => {
-                    setSelectedTool("pan")
-                }} activated={selectedTool === "pan"} icon={<TfiHandDrag />}></IconButton>
-                <IconButton onClick={() => {
-                    setSelectedTool("erase")
-                }} activated={selectedTool === "erase"} icon={<LuEraser />}></IconButton>
-            </div>
-        </div>
+  return (
+    <div
+      style={{
+        position: "fixed",
+        top: 10,
+        left: 10,
+      }}
+    >
+      <div style={{ display: "flex", gap: "10px" }}>
+        <IconButton
+          onClick={() => setSelectedTool("line")}
+          activated={selectedTool === "line"}
+          icon={<LuMinus />}
+        />
+        <IconButton
+          onClick={() => setSelectedTool("rect")}
+          activated={selectedTool === "rect"}
+          icon={<LuRectangleHorizontal />}
+        />
+        <IconButton
+          onClick={() => setSelectedTool("circle")}
+          activated={selectedTool === "circle"}
+          icon={<LuCircle />}
+        />
+        <IconButton
+          onClick={() => setSelectedTool("text")}
+          activated={selectedTool === "text"}
+          icon={<IoText />}
+        />
+        <IconButton
+          onClick={() => setSelectedTool("pencil")}
+          activated={selectedTool === "pencil"}
+          icon={<LuPencil />}
+        />
+        <IconButton
+          onClick={() => setSelectedTool("pan")}
+          activated={selectedTool === "pan"}
+          icon={<TfiHandDrag />}
+        />
+        <IconButton
+          onClick={() => setSelectedTool("erase")}
+          activated={selectedTool === "erase"}
+          icon={<LuEraser />}
+        />
+      </div>
+    </div>
+  );
 }

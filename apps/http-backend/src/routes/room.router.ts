@@ -5,7 +5,7 @@ const router : Router = Router();
 
 router.post("/createRoom", middleware, createRoomController )
 router.get("/chats/:roomId", middleware, getRecentMessages)
-router.get("/:slug", getRoomIdController)
+router.get("/:slug", middleware , getRoomIdController)
 router.get("/check/:slug", middleware, checkUserInRoom)
 router.get("/admin/myRooms", middleware, adminRoomsController)
 
