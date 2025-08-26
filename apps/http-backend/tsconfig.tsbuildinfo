@@ -1,1 +1,1 @@
-{"root":["./src/index.ts","./src/controllers/auth.controller.ts","./src/controllers/room.controller.ts","./src/middlwares/middleware.ts","./src/routes/auth.router.ts","./src/routes/room.router.ts"],"version":"5.8.2"}
+{"root":["./src/index.ts","./src/controllers/auth.controller.ts","./src/controllers/request.controller.ts","./src/controllers/room.controller.ts","./src/middlwares/middleware.ts","./src/routes/auth.router.ts","./src/routes/request.router.ts","./src/routes/room.router.ts","./src/utils/joinrequestservice.ts"],"version":"5.8.2"}

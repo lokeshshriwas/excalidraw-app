@@ -112,15 +112,36 @@ export const checkUserInRoom = async (req: any, res: any) => {
 
 export const adminRoomsController = async (req: any, res: any) => {
   const userId = req.userId;
+
   try {
-    const rooms = await prismaClient.room.findMany({
+    // Rooms where user is the admin
+    const adminRooms = await prismaClient.room.findMany({
       where: {
         adminId: userId,
       },
     });
-    return res.status(200).json({data : rooms});
+
+    // Rooms where user is a member but NOT the admin
+    const userRooms = await prismaClient.room.findMany({
+      where: {
+        adminId: {
+          not: userId,
+        },
+        users: {
+          some: {
+            id: userId,
+          },
+        },
+      },
+    });
+
+    return res.status(200).json({
+      adminRooms,
+      userRooms,
+    });
   } catch (error: any) {
     console.error(error);
     return res.status(500).json({ message: "Failed to fetch rooms" });
   }
 };
+

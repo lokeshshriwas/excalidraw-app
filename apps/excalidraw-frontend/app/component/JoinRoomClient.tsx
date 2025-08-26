@@ -69,7 +69,7 @@ const JoinRoomClient: React.FC = () => {
       
       // Send join request to backend
       const response = await axios.post(
-        `${BASE_URL}/room/requestJoin`, // Adjust endpoint as needed
+        `${BASE_URL}/req/requestJoin`, // Adjust endpoint as needed
         { roomSlug: roomSlug },
         {
           headers: {
