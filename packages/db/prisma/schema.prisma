@@ -14,9 +14,10 @@ model User {
   name       String
   avatar     String?
 
-  chats      Chat[]
-  adminRooms Room[]   @relation(name: "AdminRelation")
-  userRooms  Room[]   @relation(name: "UserRelation") // many-to-many
+  chats         Chat[]
+  adminRooms    Room[]        @relation(name: "AdminRelation")
+  userRooms     Room[]        @relation(name: "UserRelation") // many-to-many
+  joinRequests  JoinRequest[] // join requests made by this user
 }
 
 model Room {
@@ -24,12 +25,29 @@ model Room {
   slug      String   @unique
   createdAt DateTime @default(now())
 
-  chats     Chat[]
-  adminId   String
-  admin     User     @relation(name: "AdminRelation", fields: [adminId], references: [id])
-  users     User[]   @relation(name: "UserRelation") // many-to-many
+  chats        Chat[]
+  joinRequests JoinRequest[] // join requests for this room
+  adminId      String
+  admin        User          @relation(name: "AdminRelation", fields: [adminId], references: [id])
+  users        User[]        @relation(name: "UserRelation") // many-to-many
 }
 
+model JoinRequest {
+  id        String            @id @default(uuid())
+  roomId    Int
+  userId    String
+  status    JoinRequestStatus @default(PENDING)
+  message   String?           
+  createdAt DateTime          @default(now())
+  updatedAt DateTime          @updatedAt
+
+  // Relations
+  room      Room              @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  user      User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // Unique constraint to prevent duplicate requests
+  @@unique([roomId, userId])
+}
 
 model Chat {
   id        String   @id @default(uuid()) @db.Uuid
@@ -41,4 +59,10 @@ model Chat {
   // Relations
   user      User     @relation(fields: [userId], references: [id])
   room      Room     @relation(fields: [roomId], references: [id])
+}
+
+enum JoinRequestStatus {
+  PENDING
+  APPROVED
+  REJECTED
 }

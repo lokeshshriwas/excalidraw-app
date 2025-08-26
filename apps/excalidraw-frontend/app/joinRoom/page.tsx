@@ -346,7 +346,7 @@ const CreateRoomPage: React.FC = () => {
               onClick={() => router.push("/join")}
               className="text-blue-400 hover:text-blue-300 font-medium transition-colors duration-200"
             >
-              Join existing room
+              Join Room via Link
             </button>
           </div>
         </div>
