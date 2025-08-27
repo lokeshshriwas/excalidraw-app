@@ -79,7 +79,7 @@ function Topbar({
       style={{
         position: "fixed",
         top: 10,
-        left: 10,
+        right: 10
       }}
     >
       <div style={{ display: "flex", gap: "10px" }}>

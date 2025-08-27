@@ -135,15 +135,6 @@ const JoinRoomClient: React.FC = () => {
       {/* Background gradient - fixed to cover full screen */}
       <div className="fixed inset-0 bg-gradient-to-br from-blue-900/20 via-purple-900/10 to-pink-900/20 pointer-events-none" />
       
-      {/* Header with logout - fixed positioning */}
-      <div className="fixed top-4 right-4 z-10">
-        <button
-          onClick={handleLogout}
-          className="text-gray-400 hover:text-white transition-colors duration-200 text-sm"
-        >
-          Sign out
-        </button>
-      </div>
 
       {/* Main container - with proper z-index */}
       <div className="w-full max-w-md relative z-10">

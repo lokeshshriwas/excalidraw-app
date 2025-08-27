@@ -7,12 +7,13 @@ import Link from 'next/link';
 export default function LoginPage() {
   const router = useRouter();
   const [email, setEmail] = useState('');
+  const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
 
-  const handleLogin = async () => {
-    if (!email || !password) {
+  const handleRegister = async () => {
+    if (!email || !password || !username) {
       setError('Please fill in all fields');
       return;
     }
@@ -44,14 +45,14 @@ export default function LoginPage() {
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter') {
-      handleLogin();
+      handleRegister();
     }
   };
 
   return (
-    <div className="min-h-screen bg-[#0d0d0d] flex items-center justify-center px-4">
+    <div className="min-h-screen bg-[#0d0d0d] flex items-start justify-center px-4 py-8">
       {/* Background gradient */}
-      <div className="absolute inset-0 bg-gradient-to-br from-blue-900/20 via-purple-900/10 to-pink-900/20 pointer-events-none" />
+      <div className="fixed inset-0 bg-gradient-to-br from-blue-900/20 via-purple-900/10 to-pink-900/20 pointer-events-none" />
       
       {/* Login container */}
       <div className="w-full max-w-md relative">
@@ -61,7 +62,7 @@ export default function LoginPage() {
             <div className="w-6 h-6 bg-white rounded-sm" />
           </div>
           <h1 className="text-2xl font-semibold text-white mb-2">Welcome back</h1>
-          <p className="text-gray-400 text-sm">Sign in to your account</p>
+          <p className="text-gray-400 text-sm">Create your account</p>
         </div>
 
         {/* Login form */}
@@ -73,6 +74,23 @@ export default function LoginPage() {
           )}
 
           <div className="space-y-6">
+           {/* Username input */}
+            <div>
+              <label htmlFor="email" className="block text-sm font-medium text-gray-300 mb-2">
+                Username
+              </label>
+              <input
+                id="username"
+                type="text"
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
+                onKeyPress={handleKeyPress}
+                placeholder="Enter your Username"
+                className="w-full px-4 py-3 bg-[#0d0d0d] border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all duration-200"
+                disabled={isLoading}
+              />
+            </div>
+
             {/* Email input */}
             <div>
               <label htmlFor="email" className="block text-sm font-medium text-gray-300 mb-2">
@@ -109,7 +127,7 @@ export default function LoginPage() {
 
             {/* Login button */}
             <button
-              onClick={handleLogin}
+              onClick={handleRegister}
               disabled={isLoading}
               className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 disabled:from-gray-600 disabled:to-gray-600 text-white font-medium py-3 px-4 rounded-lg transition-all duration-200 transform hover:scale-[1.02] active:scale-[0.98] disabled:cursor-not-allowed disabled:transform-none"
             >
@@ -122,7 +140,7 @@ export default function LoginPage() {
                   Signing in...
                 </div>
               ) : (
-                'Sign in'
+                'Sign up'
               )}
             </button>
           </div>
@@ -134,15 +152,15 @@ export default function LoginPage() {
                 <div className="w-full border-t border-gray-700" />
               </div>
               <div className="relative flex justify-center text-sm">
-                <span className="px-2 bg-[#1a1a1a] text-gray-400">Don't have an account?</span>
+                <span className="px-2 bg-[#1a1a1a] text-gray-400">Already have an account?</span>
               </div>
             </div>
           </div>
 
           {/* Sign up link */}
           <div className="text-center">
-            <Link href="/register" className="text-blue-400 hover:text-blue-300 font-medium transition-colors duration-200">
-              Create account
+            <Link href="/login" className="text-blue-400 hover:text-blue-300 font-medium transition-colors duration-200">
+              Login to your account
             </Link>
           </div>
         </div>

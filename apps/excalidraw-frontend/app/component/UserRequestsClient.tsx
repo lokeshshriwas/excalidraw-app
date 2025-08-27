@@ -156,42 +156,7 @@ const UserRequestsClient: React.FC = () => {
     <div className="min-h-screen bg-[#0d0d0d]">
       {/* Fixed background */}
       <div className="fixed inset-0 bg-gradient-to-br from-blue-900/20 via-purple-900/10 to-pink-900/20 pointer-events-none" />
-      
-      {/* Header */}
-      <div className="relative z-10 bg-[#1a1a1a] border-b border-gray-800">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center h-16">
-            <div className="flex items-center space-x-4">
-              <div className="w-8 h-8 bg-gradient-to-r from-purple-500 to-pink-600 rounded-lg flex items-center justify-center">
-                <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                </svg>
-              </div>
-              <h1 className="text-xl font-semibold text-white">My Dashboard</h1>
-            </div>
-            <div className="flex items-center space-x-4">
-              <button
-                onClick={() => router.push('/join')}
-                className="text-purple-400 hover:text-purple-300 text-sm transition-colors duration-200"
-              >
-                Join Room
-              </button>
-              <button
-                onClick={() => router.push('/joinRoom')}
-                className="text-blue-400 hover:text-blue-300 text-sm transition-colors duration-200"
-              >
-                Create Room
-              </button>
-              <button
-                onClick={handleLogout}
-                className="text-gray-400 hover:text-white text-sm transition-colors duration-200"
-              >
-                Sign out
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
+
 
       <div className="relative z-10 max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {error && (
