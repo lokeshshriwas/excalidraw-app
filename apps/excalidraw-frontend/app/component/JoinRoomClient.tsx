@@ -9,6 +9,7 @@ import { BASE_URL } from "../config";
 const JoinRoomClient: React.FC = () => {
   const router = useRouter();
   const [roomLink, setRoomLink] = useState("");
+  const [message, setMessage] = useState("");
   const [token, setToken] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
@@ -66,11 +67,12 @@ const JoinRoomClient: React.FC = () => {
     try {
       // Extract slug from the provided link
       const roomSlug = extractSlugFromLink(roomLink);
+      const msg = message;
       
       // Send join request to backend
       const response = await axios.post(
         `${BASE_URL}/req/requestJoin`, // Adjust endpoint as needed
-        { roomSlug: roomSlug },
+        { roomSlug: roomSlug, message : msg },
         {
           headers: {
             "Content-Type": "application/json",
@@ -84,6 +86,7 @@ const JoinRoomClient: React.FC = () => {
         "Join request sent successfully! The room admin will review your request."
       );
       setRoomLink(""); // Clear the input
+      setMessage(""); // Clear the message input
     } catch (error: any) {
       console.error("Join request failed:", error);
       if (error.response?.status === 401) {
@@ -107,6 +110,7 @@ const JoinRoomClient: React.FC = () => {
   };
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
+    if (roomLink.trim() === "") return; 
     if (e.key === "Enter") {
       handleJoinRequest();
     }
@@ -209,6 +213,21 @@ const JoinRoomClient: React.FC = () => {
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
                   </svg>
                 </button>
+              </div>
+
+              <label htmlFor="message" className="block text-sm font-medium text-gray-300 mb-2 mt-5">
+                Message For Admin (Optional)
+              </label>
+              <div className="relative">
+                <input
+                  id="message"
+                  type="text"
+                  value={message}
+                  onChange={(e) => setMessage(e.target.value)}
+                  placeholder="Write your message here..."
+                  className="w-full px-4 py-3 pr-12 bg-[#0d0d0d] border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-500 transition-all duration-200"
+                  disabled={isLoading}
+                />
               </div>
               <p className="text-xs text-gray-500 mt-1">
                 Supported formats: Full URL or room ID (e.g., room-abc123...)
