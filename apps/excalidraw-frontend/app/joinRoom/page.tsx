@@ -27,7 +27,7 @@ const CreateRoomPage: React.FC = () => {
     setRoomsError("");
     
     try {
-      const response = await axios.get(`${BASE_URL}/room/admin/myRooms`, {
+      const response = await axios.get(`${BASE_URL}/user/myRooms`, {
         headers: {
           "Content-Type": "application/json",
           Authorization: `${token}`,
