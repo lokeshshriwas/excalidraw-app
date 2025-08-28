@@ -34,6 +34,11 @@ interface JoinRequest {
   };
 }
 
+type ConfirmAction = {
+  message: string;
+  onConfirm: () => void;
+};
+
 const AdminDashboardClient: React.FC = () => {
   const router = useRouter();
   const [token, setToken] = useState<string | null>(null);
@@ -42,7 +47,10 @@ const AdminDashboardClient: React.FC = () => {
   const [selectedRoom, setSelectedRoom] = useState<Room | null>(null);
   const [activeTab, setActiveTab] = useState<'rooms' | 'requests'>('rooms');
   const [loading, setLoading] = useState(false);
+  const [redirecting, setRedirecting] = useState(false);
+  const [redirectingTo, setRedirectingTo] = useState<string>("");
   const [error, setError] = useState("");
+  const [confirmAction, setConfirmAction] = useState<ConfirmAction | null>(null);
 
   useEffect(() => {
     const storedToken = localStorage.getItem("token");
@@ -80,6 +88,22 @@ const AdminDashboardClient: React.FC = () => {
     }
   };
 
+  const handleRoomNavigation = async (roomSlug: string) => {
+    setRedirecting(true);
+    setRedirectingTo(roomSlug);
+    
+    try {
+      // Small delay to ensure the loader is visible
+      await new Promise(resolve => setTimeout(resolve, 300));
+      router.push(`/canvas/${roomSlug}`);
+    } catch (error) {
+      console.error("Navigation error:", error);
+      setRedirecting(false);
+      setRedirectingTo("");
+      setError("Failed to navigate to room");
+    }
+  };
+
   const handleJoinRequest = async (requestId: string, action: 'APPROVED' | 'REJECTED') => {
     if (!token) return;
 
@@ -102,59 +126,68 @@ const AdminDashboardClient: React.FC = () => {
     }
   };
 
-  const removeUserFromRoom = async (roomId: number, userId: string) => {
-    if (!token || !confirm("Are you sure you want to remove this user from the room?")) return;
+  const removeUserFromRoom = (roomId: number, userId: string) => {
+    if (!token) return;
+    setConfirmAction({
+      message: "Are you sure you want to remove this user from the room?",
+      onConfirm: async () => {
+        try {
+          await axios.delete(`${BASE_URL}/admin/${roomId}/users/${userId}`, {
+            headers: { Authorization: `${token}` },
+          });
 
-    try {
-      await axios.delete(`${BASE_URL}/admin/${roomId}/users/${userId}`, {
-        headers: { Authorization: `${token}` }
-      });
-      
-      // Update the rooms state to reflect the change
-      setRooms(prev => prev.map(room => 
-        room.id === roomId 
-          ? { 
-              ...room, 
-              users: room.users.filter(user => user.id !== userId),
-              _count: { ...room._count, users: room._count.users - 1 }
-            }
-          : room
-      ));
-      
-      if (selectedRoom?.id === roomId) {
-        setSelectedRoom(prev => prev ? {
-          ...prev,
-          users: prev.users.filter(user => user.id !== userId),
-          _count: { ...prev._count, users: prev._count.users - 1 }
-        } : null);
-      }
-    } catch (error) {
-      console.error("Error removing user:", error);
-      setError("Failed to remove user from room");
-    }
+          // Update rooms state
+          setRooms(prev =>
+            prev.map(room =>
+              room.id === roomId
+                ? {
+                    ...room,
+                    users: room.users.filter((user: any) => user.id !== userId),
+                    _count: { ...room._count, users: room._count.users - 1 },
+                  }
+                : room
+            )
+          );
+
+          if (selectedRoom?.id === roomId) {
+            setSelectedRoom(prev =>
+              prev
+                ? {
+                    ...prev,
+                    users: prev.users.filter((user: any) => user.id !== userId),
+                    _count: { ...prev._count, users: prev._count.users - 1 },
+                  }
+                : null
+            );
+          }
+        } catch (error) {
+          console.error("Error removing user:", error);
+          setError("Failed to remove user from room");
+        }
+      },
+    });
   };
 
-  const deleteRoom = async (roomId: number) => {
-    if (!token || !confirm("Are you sure you want to delete this room? This action cannot be undone.")) return;
+  const deleteRoom = (roomId: number) => {
+    if (!token) return;
+    setConfirmAction({
+      message: "Are you sure you want to delete this room? This action cannot be undone.",
+      onConfirm: async () => {
+        try {
+          await axios.delete(`${BASE_URL}/admin/${roomId}`, {
+            headers: { Authorization: `${token}` },
+          });
 
-    try {
-      await axios.delete(`${BASE_URL}/admin/${roomId}`, {
-        headers: { Authorization: `${token}` }
-      });
-      
-      setRooms(prev => prev.filter(room => room.id !== roomId));
-      if (selectedRoom?.id === roomId) {
-        setSelectedRoom(null);
-      }
-    } catch (error) {
-      console.error("Error deleting room:", error);
-      setError("Failed to delete room");
-    }
-  };
-
-  const handleLogout = () => {
-    localStorage.removeItem("token");
-    router.push("/login");
+          setRooms(prev => prev.filter(room => room.id !== roomId));
+          if (selectedRoom?.id === roomId) {
+            setSelectedRoom(null);
+          }
+        } catch (error) {
+          console.error("Error deleting room:", error);
+          setError("Failed to delete room");
+        }
+      },
+    });
   };
 
   if (loading) {
@@ -169,6 +202,17 @@ const AdminDashboardClient: React.FC = () => {
     <div className="min-h-screen bg-[#0d0d0d]">
       {/* Fixed background */}
       <div className="fixed inset-0 bg-gradient-to-br from-blue-900/20 via-purple-900/10 to-pink-900/20 pointer-events-none" />
+
+      {/* Redirection Loader Overlay */}
+      {redirecting && (
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50">
+          <div className="bg-[#1a1a1a] border border-gray-800 rounded-xl p-8 text-center max-w-sm w-full mx-4">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"></div>
+            <h3 className="text-white font-medium mb-2">Opening Room</h3>
+            <p className="text-gray-400 text-sm">Redirecting to {redirectingTo}...</p>
+          </div>
+        </div>
+      )}
 
       <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {error && (
@@ -267,18 +311,31 @@ const AdminDashboardClient: React.FC = () => {
                           <button
                             onClick={(e) => {
                               e.stopPropagation();
-                              router.push(`/canvas/${room.slug}`);
+                              handleRoomNavigation(room.slug);
                             }}
-                            className="text-blue-400 hover:text-blue-300 text-sm transition-colors duration-200"
+                            disabled={redirecting}
+                            className={`text-blue-400 hover:text-blue-300 text-sm transition-colors duration-200 bg-blue-500/20 px-2 py-1 rounded-md ${
+                              redirecting ? 'opacity-50 cursor-not-allowed' : ''
+                            }`}
                           >
-                            Open
+                            {redirecting && redirectingTo === room.slug ? (
+                              <div className="flex items-center space-x-1">
+                                <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-blue-400"></div>
+                                <span>Opening...</span>
+                              </div>
+                            ) : (
+                              'Open'
+                            )}
                           </button>
                           <button
                             onClick={(e) => {
                               e.stopPropagation();
                               deleteRoom(room.id);
                             }}
-                            className="text-red-400 hover:text-red-300 text-sm transition-colors duration-200"
+                            disabled={redirecting}
+                            className={`text-red-400 hover:text-red-300 text-sm transition-colors duration-200 bg-red-500/20 px-2 py-1 rounded-md ${
+                              redirecting ? 'opacity-50 cursor-not-allowed' : ''
+                            }`}
                           >
                             Delete
                           </button>
@@ -325,7 +382,10 @@ const AdminDashboardClient: React.FC = () => {
                             </div>
                             <button
                               onClick={() => removeUserFromRoom(selectedRoom.id, user.id)}
-                              className="text-red-400 hover:text-red-300 text-sm transition-colors duration-200"
+                              disabled={redirecting}
+                              className={`text-red-400 hover:text-red-300 text-sm transition-colors duration-200 ${
+                                redirecting ? 'opacity-50 cursor-not-allowed' : ''
+                              }`}
                             >
                               Remove
                             </button>
@@ -391,13 +451,19 @@ const AdminDashboardClient: React.FC = () => {
                       <div className="flex items-center space-x-2 ml-4">
                         <button
                           onClick={() => handleJoinRequest(request.id, 'APPROVED')}
-                          className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg text-sm transition-colors duration-200"
+                          disabled={redirecting}
+                          className={`bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg text-sm transition-colors duration-200 ${
+                            redirecting ? 'opacity-50 cursor-not-allowed' : ''
+                          }`}
                         >
                           Approve
                         </button>
                         <button
                           onClick={() => handleJoinRequest(request.id, 'REJECTED')}
-                          className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg text-sm transition-colors duration-200"
+                          disabled={redirecting}
+                          className={`bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg text-sm transition-colors duration-200 ${
+                            redirecting ? 'opacity-50 cursor-not-allowed' : ''
+                          }`}
                         >
                           Reject
                         </button>
@@ -409,6 +475,34 @@ const AdminDashboardClient: React.FC = () => {
             )}
           </div>
         )}
+
+        <div>
+          {/* Custom confirmation modal */}
+          {confirmAction && !redirecting && (
+            <div className="fixed inset-0 flex items-center justify-center bg-black/50 z-40">
+              <div className="bg-white dark:bg-gray-900 rounded-xl shadow-lg p-6 max-w-sm w-full">
+                <p className="text-lg text-gray-800 dark:text-gray-200">{confirmAction.message}</p>
+                <div className="mt-4 flex justify-end space-x-3">
+                  <button
+                    onClick={() => setConfirmAction(null)}
+                    className="px-4 py-2 rounded-lg bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-200"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={() => {
+                      confirmAction.onConfirm();
+                      setConfirmAction(null);
+                    }}
+                    className="px-4 py-2 rounded-lg bg-red-600 text-white"
+                  >
+                    Confirm
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );

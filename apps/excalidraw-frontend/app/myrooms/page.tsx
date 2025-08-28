@@ -13,6 +13,9 @@ const CreateRoomPage: React.FC = () => {
   const [memberRooms, setMemberRooms] = useState([]);
   const [loadingRooms, setLoadingRooms] = useState(false);
   const [roomsError, setRoomsError] = useState("");
+  const [redirecting, setRedirecting] = useState(false);
+  const [redirectingTo, setRedirectingTo] = useState<string>("");
+  const [error, setError] = useState("");
 
   const findMyRoom = async (token: string) => {
     setLoadingRooms(true);
@@ -53,6 +56,22 @@ const CreateRoomPage: React.FC = () => {
     }
   }, [router]);
 
+  const handleRoomNavigation = async (roomSlug: string) => {
+    setRedirecting(true);
+    setRedirectingTo(roomSlug);
+    
+    try {
+      // Small delay to ensure the loader is visible
+      await new Promise(resolve => setTimeout(resolve, 300));
+      router.push(`/canvas/${roomSlug}`);
+    } catch (error) {
+      console.error("Navigation error:", error);
+      setRedirecting(false);
+      setRedirectingTo("");
+      setError("Failed to navigate to room");
+    }
+  };
+
   const handleJoinRoom = (roomSlug: string) => {
     router.push(`/canvas/${roomSlug}`);
   };
@@ -61,6 +80,17 @@ const CreateRoomPage: React.FC = () => {
     <div className="min-h-screen bg-[#0d0d0d] flex items-start justify-center px-4 py-8">
       {/* Background gradient */}
       <div className="fixed inset-0 bg-gradient-to-br from-blue-900/20 via-purple-900/10 to-pink-900/20 pointer-events-none" />
+
+       {/* Redirection Loader Overlay */}
+        {redirecting && (
+          <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50">
+            <div className="bg-[#1a1a1a] border border-gray-800 rounded-xl p-8 text-center max-w-sm w-full mx-4">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"></div>
+              <h3 className="text-white font-medium mb-2">Opening Room</h3>
+              <p className="text-gray-400 text-sm">Redirecting to {redirectingTo}...</p>
+            </div>
+          </div>
+        )}
 
       {/* Main container */}
       <div className="w-full max-w-2xl relative z-10">
@@ -138,7 +168,11 @@ const CreateRoomPage: React.FC = () => {
                         </div>
                       </div>
                       <button
-                        onClick={() => handleJoinRoom(room.slug)}
+                        onClick={(e) =>{
+                            e.stopPropagation();
+                            handleRoomNavigation(room.slug);
+                        }}
+                        disabled={redirecting}
                         className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded-md text-sm transition-colors duration-200"
                       >
                         Join
@@ -193,7 +227,11 @@ const CreateRoomPage: React.FC = () => {
                         </div>
                       </div>
                       <button
-                        onClick={() => handleJoinRoom(room.slug)}
+                        onClick={(e) => {
+                           e.stopPropagation();
+                          handleRoomNavigation(room.slug);
+                        }}
+                        disabled={redirecting}
                         className="bg-green-600 hover:bg-green-700 text-white px-3 py-1 rounded-md text-sm transition-colors duration-200"
                       >
                         Join
