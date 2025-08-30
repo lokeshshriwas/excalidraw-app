@@ -3,6 +3,7 @@ import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { BASE_URL } from '../config';
 import Link from 'next/link';
+import OAuth from '../component/OAuth';
 
 export default function LoginPage() {
   const router = useRouter();
@@ -33,13 +34,23 @@ export default function LoginPage() {
         localStorage.setItem("token", data.token);
         router.push('/joinRoom');
       } else {
-        setError('Invalid credentials. Please try again.');
+        setError(data.message || 'Invalid credentials. Please try again.');
       }
     } catch (err) {
       setError('Something went wrong. Please try again.');
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const handleOAuthSuccess = (token: string, user: any) => {
+    localStorage.setItem("token", token);
+    localStorage.setItem("user", JSON.stringify(user));
+    router.push('/joinRoom');
+  };
+
+  const handleOAuthError = (errorMessage: string) => {
+    setError(errorMessage);
   };
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
@@ -51,7 +62,7 @@ export default function LoginPage() {
   return (
     <div className="min-h-screen bg-[#0d0d0d] flex items-center justify-center px-4">
       {/* Background gradient */}
-      <div className="absolute inset-0 bg-gradient-to-br from-blue-900/20 via-purple-900/10 to-pink-900/20 pointer-events-none" />
+      <div className="fixed inset-0 bg-gradient-to-br from-blue-900/20 via-purple-900/10 to-pink-900/20 pointer-events-none" />
       
       {/* Login container */}
       <div className="w-full max-w-md relative">
@@ -73,6 +84,19 @@ export default function LoginPage() {
           )}
 
           <div className="space-y-6">
+            {/* OAuth Buttons */}
+            <OAuth onSuccess={handleOAuthSuccess} onError={handleOAuthError} />
+
+            {/* Divider */}
+            <div className="relative">
+              <div className="absolute inset-0 flex items-center">
+                <div className="w-full border-t border-gray-700" />
+              </div>
+              <div className="relative flex justify-center text-sm">
+                <span className="px-2 bg-[#1a1a1a] text-gray-400">Or continue with email</span>
+              </div>
+            </div>
+
             {/* Email input */}
             <div>
               <label htmlFor="email" className="block text-sm font-medium text-gray-300 mb-2">
@@ -127,7 +151,7 @@ export default function LoginPage() {
             </button>
           </div>
 
-          {/* Divider */}
+          {/* Sign up link */}
           <div className="mt-8 mb-6">
             <div className="relative">
               <div className="absolute inset-0 flex items-center">
@@ -139,7 +163,6 @@ export default function LoginPage() {
             </div>
           </div>
 
-          {/* Sign up link */}
           <div className="text-center">
             <Link href="/register" className="text-blue-400 hover:text-blue-300 font-medium transition-colors duration-200">
               Create account

@@ -3,8 +3,9 @@ import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { BASE_URL } from '../config';
 import Link from 'next/link';
+import OAuth from '../component/OAuth';
 
-export default function LoginPage() {
+export default function RegisterPage() {
   const router = useRouter();
   const [email, setEmail] = useState('');
   const [username, setUsername] = useState('');
@@ -22,25 +23,49 @@ export default function LoginPage() {
     setError('');
 
     try {
-      const response = await fetch(`${BASE_URL}/auth/signin`, {
+      const response = await fetch(`${BASE_URL}/auth/signup`, {
         method: 'POST',
-        body: JSON.stringify({ email, password }),
+        body: JSON.stringify({ email, password, name: username }),
         headers: { 'Content-Type': 'application/json' },
       });
 
       const data = await response.json();
       
-      if (data.token) {
-        localStorage.setItem("token", data.token);
-        router.push('/joinRoom');
+      if (response.ok) {
+        // Auto sign in after successful registration
+        const loginResponse = await fetch(`${BASE_URL}/auth/signin`, {
+          method: 'POST',
+          body: JSON.stringify({ email, password }),
+          headers: { 'Content-Type': 'application/json' },
+        });
+
+        const loginData = await loginResponse.json();
+        
+        if (loginData.token) {
+          localStorage.setItem("token", loginData.token);
+          router.push('/joinRoom');
+        } else {
+          setError('Account created! Please sign in.');
+          router.push('/login');
+        }
       } else {
-        setError('Invalid credentials. Please try again.');
+        setError(data.message || 'Registration failed. Please try again.');
       }
     } catch (err) {
       setError('Something went wrong. Please try again.');
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const handleOAuthSuccess = (token: string, user: any) => {
+    localStorage.setItem("token", token);
+    localStorage.setItem("user", JSON.stringify(user));
+    router.push('/joinRoom');
+  };
+
+  const handleOAuthError = (errorMessage: string) => {
+    setError(errorMessage);
   };
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
@@ -54,18 +79,18 @@ export default function LoginPage() {
       {/* Background gradient */}
       <div className="fixed inset-0 bg-gradient-to-br from-blue-900/20 via-purple-900/10 to-pink-900/20 pointer-events-none" />
       
-      {/* Login container */}
+      {/* Register container */}
       <div className="w-full max-w-md relative">
         {/* Logo/Brand section */}
         <div className="text-center mb-8">
           <div className="w-12 h-12 bg-gradient-to-r from-blue-500 to-purple-600 rounded-xl mx-auto mb-4 flex items-center justify-center">
             <div className="w-6 h-6 bg-white rounded-sm" />
           </div>
-          <h1 className="text-2xl font-semibold text-white mb-2">Welcome back</h1>
-          <p className="text-gray-400 text-sm">Create your account</p>
+          <h1 className="text-2xl font-semibold text-white mb-2">Create Account</h1>
+          <p className="text-gray-400 text-sm">Join us today</p>
         </div>
 
-        {/* Login form */}
+        {/* Register form */}
         <div className="bg-[#1a1a1a] border border-gray-800 rounded-2xl p-8 shadow-2xl backdrop-blur-sm">
           {error && (
             <div className="mb-6 p-3 bg-red-500/10 border border-red-500/20 rounded-lg">
@@ -74,9 +99,22 @@ export default function LoginPage() {
           )}
 
           <div className="space-y-6">
-           {/* Username input */}
+            {/* OAuth Buttons */}
+            <OAuth onSuccess={handleOAuthSuccess} onError={handleOAuthError} />
+
+            {/* Divider */}
+            <div className="relative">
+              <div className="absolute inset-0 flex items-center">
+                <div className="w-full border-t border-gray-700" />
+              </div>
+              <div className="relative flex justify-center text-sm">
+                <span className="px-2 bg-[#1a1a1a] text-gray-400">Or continue with email</span>
+              </div>
+            </div>
+
+            {/* Username input */}
             <div>
-              <label htmlFor="email" className="block text-sm font-medium text-gray-300 mb-2">
+              <label htmlFor="username" className="block text-sm font-medium text-gray-300 mb-2">
                 Username
               </label>
               <input
@@ -85,7 +123,7 @@ export default function LoginPage() {
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
                 onKeyPress={handleKeyPress}
-                placeholder="Enter your Username"
+                placeholder="Enter your username"
                 className="w-full px-4 py-3 bg-[#0d0d0d] border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all duration-200"
                 disabled={isLoading}
               />
@@ -125,7 +163,7 @@ export default function LoginPage() {
               />
             </div>
 
-            {/* Login button */}
+            {/* Register button */}
             <button
               onClick={handleRegister}
               disabled={isLoading}
@@ -137,15 +175,15 @@ export default function LoginPage() {
                     <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                     <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                   </svg>
-                  Signing in...
+                  Creating account...
                 </div>
               ) : (
-                'Sign up'
+                'Create Account'
               )}
             </button>
           </div>
 
-          {/* Divider */}
+          {/* Sign in link */}
           <div className="mt-8 mb-6">
             <div className="relative">
               <div className="absolute inset-0 flex items-center">
@@ -157,10 +195,9 @@ export default function LoginPage() {
             </div>
           </div>
 
-          {/* Sign up link */}
           <div className="text-center">
             <Link href="/login" className="text-blue-400 hover:text-blue-300 font-medium transition-colors duration-200">
-              Login to your account
+              Sign in to your account
             </Link>
           </div>
         </div>
