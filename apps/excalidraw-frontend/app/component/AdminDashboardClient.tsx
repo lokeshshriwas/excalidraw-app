@@ -174,7 +174,7 @@ const AdminDashboardClient: React.FC = () => {
       message: "Are you sure you want to delete this room? This action cannot be undone.",
       onConfirm: async () => {
         try {
-          await axios.delete(`${BASE_URL}/admin/${roomId}`, {
+          await axios.delete(`${BASE_URL}/admin/room/${roomId}`, {
             headers: { Authorization: `${token}` },
           });
 

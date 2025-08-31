@@ -33,7 +33,6 @@ export async function getExistingShapes(roomId: number | null) {
             y2: shape.y2 ?? null
           }));
         }
-        console.log("Message data is not an array:", messageData);
         return [messageData];
       } catch (err) {
         console.error("Error parsing message:", msg.message, err);

@@ -37,6 +37,21 @@ const CreateRoomPage: React.FC = () => {
     setError("");
 
     try {
+      // Check how many rooms the user already has
+      const { data: adminRooms } = await axios.get(`${BASE_URL}/user/myRooms`, {
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `${token}`,
+        },
+      });
+
+      if (adminRooms?.length >= 2) {
+        setError("You can create only 2 rooms as admin. Join others as a participant.");
+        setIsLoading(false);
+        return; // ⛔ STOP everything here
+      }
+
+      // ✅ Proceed with room creation
       await axios.post(
         `${BASE_URL}/room/createRoom`,
         { name: roomId },
@@ -47,6 +62,8 @@ const CreateRoomPage: React.FC = () => {
           },
         }
       );
+
+      // ✅ Only redirect after successful creation
       router.push(`/canvas/${roomId}`);
     } catch (error: any) {
       console.error("Room creation failed:", error);

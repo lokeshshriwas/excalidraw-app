@@ -1,7 +1,9 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useRouter, usePathname } from "next/navigation";
+import axios from "axios";
+import { BASE_URL } from "../config";
 
 interface NavbarProps {
   className?: string;
@@ -11,6 +13,26 @@ const Navbar: React.FC<NavbarProps> = ({ className = "" }) => {
   const router = useRouter();
   const pathname = usePathname();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [profile, setProfile] = useState({
+    email : "",
+    name : "",
+    avatar : ""
+  });
+
+  useEffect(()=>{
+    const token = localStorage.getItem("token");
+    const fetchProfile = async () => {
+      const data = await axios.get(`${BASE_URL}/user/profile`, {
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `${token}`,
+        },
+      })
+      setProfile(data.data)
+   }
+   fetchProfile();
+   
+  })
 
   const handleLogout = () => {
     localStorage.removeItem("token");
@@ -25,9 +47,9 @@ const Navbar: React.FC<NavbarProps> = ({ className = "" }) => {
 
   const navigationItems = [
     { label: "Dashboard", path: "/dashboard", icon: "🏠" },
+    { label: "My Rooms", path: "/myrooms", icon: "📁" },
     { label: "Create Room", path: "/joinRoom", icon: "➕" },
     { label: "Join Room", path: "/join", icon: "🔗" },
-    { label: "My Rooms", path: "/myrooms", icon: "📁" },
     { label: "Your Requests", path: "/requests", icon: "🙏" },
   ];
 
@@ -115,10 +137,14 @@ const Navbar: React.FC<NavbarProps> = ({ className = "" }) => {
             <div className="mb-4 p-3 bg-[#0d0d0d] rounded-lg">
               <div className="flex items-center space-x-3">
                 <div className="w-8 h-8 bg-gradient-to-r from-green-500 to-blue-500 rounded-full flex items-center justify-center">
-                  <span className="text-white text-sm font-bold">U</span>
+                  {
+                    profile.avatar ?
+                    <img className="h-full w-full rounded-full" src={profile.avatar} /> : 
+                    <img className="h-full w-full rounded-full" src={"./default_avatar.png"} />
+                  }
                 </div>
                 <div>
-                  <p className="text-white text-sm font-medium">User</p>
+                  <p className="text-white text-sm font-medium">{profile?.name ? profile.name : "User"}</p>
                   <p className="text-gray-400 text-xs">Online</p>
                 </div>
               </div>

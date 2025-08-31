@@ -10,6 +10,17 @@ export const createRoomController = async (req: any, res: any) => {
   const userId = req.userId; // from auth middleware
 
   try {
+    // Check how many rooms this user has already created as admin
+    const existingRooms = await prismaClient.room.count({
+      where: { adminId: userId },
+    });
+
+    if (existingRooms >= 2) {
+      return res.status(403).send({
+        message: "You can create only 2 rooms as admin. Join others as a participant.",
+      });
+    }
+
     const room = await prismaClient.room.create({
       data: {
         slug: parsedData.data.name,

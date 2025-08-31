@@ -46,7 +46,6 @@ const RoomCanvas = ({
         });
         
         const checkUser: { isInRoom: boolean } = response.data;
-        console.log("User room check:", checkUser);
         
         if (!checkUser.isInRoom) {
           if (!hasNavigated.current) {

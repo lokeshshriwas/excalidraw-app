@@ -6,6 +6,6 @@ const router : Router = Router();
 router.get("/rooms", middleware, adminRoomsControllerWithNumbers)
 router.get("/join-requests", middleware , adminJoinRequestsController)
 router.delete("/:roomId/users/:userId", middleware , removeUserFromRoomController)
-router.delete("/rooms/:roomId", middleware , deleteRoomController)
+router.delete("/room/:roomId", middleware , deleteRoomController)
 
 export default router

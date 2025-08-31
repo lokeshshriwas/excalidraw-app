@@ -115,7 +115,7 @@ export const removeUserFromRoomController = async (req: any, res: any) => {
   }
 };
 
-// DELETE /api/room/:roomId - Delete room
+// DELETE /admin/room/:roomId - Delete room
 export const deleteRoomController = async (req: any, res: any) => {
   try {
     const adminId = req.userId;
@@ -136,9 +136,15 @@ export const deleteRoomController = async (req: any, res: any) => {
       return res.status(404).json({ error: "Room not found or you are not the admin" });
     }
 
-    await prismaClient.room.delete({
-      where: { id: parseInt(roomId, 10) },
-    });
+    // Use transaction to ensure atomicity
+    await prismaClient.$transaction([
+      prismaClient.chat.deleteMany({
+        where: { roomId: parseInt(roomId, 10) },
+      }),
+      prismaClient.room.delete({
+        where: { id: parseInt(roomId, 10) },
+      }),
+    ]);
 
     res.status(200).json({ message: "Room deleted successfully" });
   } catch (error) {

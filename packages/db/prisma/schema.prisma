@@ -61,7 +61,7 @@ model Chat {
 
   // Relations
   user      User     @relation(fields: [userId], references: [id])
-  room      Room     @relation(fields: [roomId], references: [id])
+  room      Room     @relation(fields: [roomId], references: [id], onDelete: Cascade)
 }
 
 enum JoinRequestStatus {

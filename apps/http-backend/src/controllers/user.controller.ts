@@ -75,3 +75,27 @@ export const cancelJoinRequestController = async (req: any, res: any) => {
   }
 };
 
+// GET /api/user/profile - Get user's profile
+export const userProfileController = async (req: any, res: any) => {
+  try {
+    const userId = req.userId;
+    if (!userId) {
+      return res.status(401).json({ error: "Unauthorized" });
+    }
+
+    const user = await prismaClient.user.findUnique({
+      where: { id: userId },
+      select: {
+        name: true,
+        email: true,
+        avatar: true,
+      },
+    });
+
+    res.status(200).json(user);
+  } catch (error) {
+    console.error("Error fetching user profile:", error);
+    res.status(500).json({ error: "Failed to fetch user profile" });
+  }
+};      
+
