@@ -21,6 +21,9 @@ const Navbar: React.FC<NavbarProps> = ({ className = "" }) => {
 
   useEffect(()=>{
     const token = localStorage.getItem("token");
+    if(!token){
+      return;
+    }
     const fetchProfile = async () => {
       const data = await axios.get(`${BASE_URL}/user/profile`, {
         headers: {

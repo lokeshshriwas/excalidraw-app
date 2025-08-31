@@ -13,7 +13,7 @@ const ClientLayout: React.FC<ClientLayoutProps> = ({ children }) => {
   const pathname = usePathname();
   
   // Pages where navbar should NOT be shown
-  const excludedPages = ["/login", "/register"];
+  const excludedPages = ["/login", "/register", "/"];
   
   const shouldShowNavbar = !excludedPages.includes(pathname);
 

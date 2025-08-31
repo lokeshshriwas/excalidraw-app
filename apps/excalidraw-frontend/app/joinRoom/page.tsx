@@ -82,10 +82,6 @@ const CreateRoomPage: React.FC = () => {
     }
   };
 
-  const handleJoinRoom = (roomSlug: string) => {
-    router.push(`/canvas/${roomSlug}`);
-  };
-
   return (
     <div className="min-h-screen bg-[#0d0d0d] flex items-start justify-center px-4 py-8">
       {/* Background gradient */}
