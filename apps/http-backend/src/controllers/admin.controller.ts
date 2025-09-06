@@ -88,6 +88,11 @@ export const removeUserFromRoomController = async (req: any, res: any) => {
       return res.status(401).json({ error: "Unauthorized" });
     }
 
+    // Validate that userId is a valid string (UUID format)
+    if (!userId || typeof userId !== 'string') {
+      return res.status(400).json({ error: "Invalid user ID" });
+    }
+
     const room = await prismaClient.room.findFirst({
       where: {
         id: parseInt(roomId, 10),
@@ -99,13 +104,25 @@ export const removeUserFromRoomController = async (req: any, res: any) => {
       return res.status(404).json({ error: "Room not found or you are not the admin" });
     }
 
-    await prismaClient.room.update({
-      where: { id: parseInt(roomId, 10) },
-      data: {
-        users: {
-          disconnect: { id: userId },
+    // Use a transaction to ensure both operations succeed or fail together
+    await prismaClient.$transaction(async (tx) => {
+      // Remove user from room
+      await tx.room.update({
+        where: { id: parseInt(roomId, 10) },
+        data: {
+          users: {
+            disconnect: { id: userId }, // userId is already a string (UUID)
+          },
         },
-      },
+      });
+
+      // Delete the join request record if it exists
+      await tx.joinRequest.deleteMany({
+        where: {
+          roomId: parseInt(roomId, 10),
+          userId: userId,
+        },
+      });
     });
 
     res.status(200).json({ message: "User removed from room successfully" });
