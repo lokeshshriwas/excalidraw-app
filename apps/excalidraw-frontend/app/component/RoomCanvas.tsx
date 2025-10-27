@@ -115,7 +115,7 @@ const RoomCanvas = ({
     return <div className="text-center p-4">Connecting...</div>;
   }
 
-  return <Canvas roomId={roomId} socket={socket} legitUser={legitUser} />;
+  return <Canvas roomId={roomId} socket={socket} legitUser={legitUser} readOnly={false} />;
 };
 
 export default RoomCanvas;

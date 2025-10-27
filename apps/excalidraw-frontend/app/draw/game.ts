@@ -29,7 +29,10 @@ export class Game {
   private pressedKey = new Set();
   private currentPencilStrokeId: string | null = null;
   private redoStack: Shapes[][] = [];
+  private readOnly: boolean;
+
   private eraseShape(shapeId: string): void {
+    if (this.readOnly) return;
     const shapesToUndo = this.existingShapes.filter(
       (shape) => shape.id === shapeId
     );
@@ -53,7 +56,8 @@ export class Game {
   constructor(
     canvas: HTMLCanvasElement,
     roomId: number | null,
-    socket: WebSocket
+    socket: WebSocket,
+    readOnly: boolean = false
   ) {
     this.canvas = canvas;
     this.ctx = canvas.getContext("2d")!;
@@ -61,6 +65,7 @@ export class Game {
     this.socket = socket;
     this.existingShapes = [];
     this.clicked = false;
+    this.readOnly = readOnly;
 
     this.canvas.tabIndex = 0; // Make canvas focusable for keyboard input
 
@@ -211,6 +216,7 @@ export class Game {
   };
 
   mouseDownHandler = (e: MouseEvent) => {
+    if (this.readOnly) return;
     this.clicked = true;
     const worldCoords = this.getWorldCoordinates(e.clientX, e.clientY);
     this.startX = worldCoords.x;
@@ -228,6 +234,7 @@ export class Game {
   };
 
   mouseUpHandler = (e: MouseEvent) => {
+    if (this.readOnly) return;
     if (this.selectedTool === "text") return;
 
     this.clicked = false;
@@ -266,7 +273,7 @@ export class Game {
       this.cameraOffset.x = e.clientX / this.cameraZoom - this.dragStart.x;
       this.cameraOffset.y = e.clientY / this.cameraZoom - this.dragStart.y;
       this.draw();
-    } else if (this.clicked && this.selectedTool !== "text") {
+    } else if (this.clicked && this.selectedTool !== "text" && !this.readOnly) {
       const worldCoords = this.getWorldCoordinates(e.clientX, e.clientY);
       const width = worldCoords.x - this.startX;
       const height = worldCoords.y - this.startY;
@@ -367,6 +374,7 @@ export class Game {
   };
 
   onKeyDownHandler = (e: KeyboardEvent) => {
+    if (this.readOnly) return;
     if (this.selectedTool !== "text") {
       this.pressedKey.add(e.key);
       if (

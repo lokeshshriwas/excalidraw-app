@@ -11,10 +11,12 @@ const Canvas = ({
   roomId,
   socket,
   legitUser,
+  readOnly = false,
 }: {
   roomId: number | null;
   socket: WebSocket;
   legitUser: boolean;
+  readOnly?: boolean;
 }) => {
   const router = useRouter();
   const canvasRef = React.useRef<HTMLCanvasElement>(null);
@@ -35,13 +37,13 @@ const Canvas = ({
   useEffect(() => {
     if (!canvasRef.current || roomId === null || !legitUser) return;
 
-    const g = new Game(canvasRef.current, roomId, socket);
+    const g = new Game(canvasRef.current, roomId, socket, readOnly);
     setGame(g);
 
     return () => {
       g.destroy();
     };
-  }, [canvasRef, roomId, socket, legitUser]);
+  }, [canvasRef, roomId, socket, legitUser, readOnly]);
 
   // Show loading while navigation is happening
   if (!legitUser) {
@@ -60,7 +62,7 @@ const Canvas = ({
           cursor: selectedTool === "pan" ? "grab" : "default",
         }}
       />
-      <Topbar setSelectedTool={setSelectedTool} selectedTool={selectedTool} />
+      {!readOnly && <Topbar setSelectedTool={setSelectedTool} selectedTool={selectedTool} />}
     </div>
   );
 };

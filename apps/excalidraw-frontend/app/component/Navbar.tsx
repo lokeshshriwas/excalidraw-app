@@ -35,7 +35,7 @@ const Navbar: React.FC<NavbarProps> = ({ className = "" }) => {
    }
    fetchProfile();
    
-  })
+  }, [])
 
   const handleLogout = () => {
     localStorage.removeItem("token");
