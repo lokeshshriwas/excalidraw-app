@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import axios from "axios";
 import { BASE_URL } from "../config";
 import { v4 as uuidv4 } from "uuid";
+import UpgradeModal from "../component/UpgradeModal";
 
 const CreateRoomPage: React.FC = () => {
   const router = useRouter();
@@ -12,10 +13,9 @@ const CreateRoomPage: React.FC = () => {
   const [token, setToken] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
+  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
 
-  const generateRoomId = () => {
-    return `room-${uuidv4()}`;
-  };
+  const generateRoomId = () => `room-${uuidv4()}`;
 
   useEffect(() => {
     const storedToken = localStorage.getItem("token");
@@ -37,21 +37,21 @@ const CreateRoomPage: React.FC = () => {
     setError("");
 
     try {
-      // Check how many rooms the user already has
-      const { data: adminRooms } = await axios.get(`${BASE_URL}/user/myRooms`, {
+      const response = await axios.get(`${BASE_URL}/user/myRooms`, {
         headers: {
           "Content-Type": "application/json",
           Authorization: `${token}`,
         },
       });
 
+      const {adminRooms} = response.data;
       if (adminRooms?.length >= 2) {
-        setError("You can create only 2 rooms as admin. Join others as a participant.");
         setIsLoading(false);
-        return; // ⛔ STOP everything here
+        setShowUpgradeModal(true); 
+        return;
       }
 
-      // ✅ Proceed with room creation
+
       await axios.post(
         `${BASE_URL}/room/createRoom`,
         { name: roomId },
@@ -63,7 +63,6 @@ const CreateRoomPage: React.FC = () => {
         }
       );
 
-      // ✅ Only redirect after successful creation
       router.push(`/canvas/${roomId}`);
     } catch (error: any) {
       console.error("Room creation failed:", error);
@@ -84,9 +83,12 @@ const CreateRoomPage: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-[#0d0d0d] flex items-start justify-center px-4 py-8">
+      <UpgradeModal
+        onClose={() => setShowUpgradeModal(false)}
+        show={showUpgradeModal}
+      />
       {/* Background gradient */}
       <div className="fixed inset-0 bg-gradient-to-br from-blue-900/20 via-purple-900/10 to-pink-900/20 pointer-events-none" />
-
       {/* Main container */}
       <div className="w-full max-w-2xl relative z-10">
         {/* Header section */}
@@ -124,7 +126,10 @@ const CreateRoomPage: React.FC = () => {
 
           <div className="space-y-6">
             <div>
-              <label htmlFor="roomName" className="block text-sm font-medium text-gray-300 mb-2">
+              <label
+                htmlFor="roomName"
+                className="block text-sm font-medium text-gray-300 mb-2"
+              >
                 Room ID
               </label>
               <input
@@ -134,20 +139,30 @@ const CreateRoomPage: React.FC = () => {
                 readOnly
                 className="w-full px-4 py-3 bg-[#0d0d0d] border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none cursor-not-allowed"
               />
-              <p className="text-xs text-gray-500 mt-1">Unique auto-generated</p>
+              <p className="text-xs text-gray-500 mt-1">
+                Unique auto-generated
+              </p>
             </div>
 
             <div className="bg-[#0d0d0d] border border-gray-700 rounded-lg p-4">
               <div className="flex items-start space-x-3">
                 <div className="w-5 h-5 text-blue-400 mt-0.5">
                   <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                    />
                   </svg>
                 </div>
                 <div>
-                  <h3 className="text-sm font-medium text-gray-300 mb-1">Room Details</h3>
+                  <h3 className="text-sm font-medium text-gray-300 mb-1">
+                    Room Details
+                  </h3>
                   <p className="text-xs text-gray-500">
-                    Your room ID is generated automatically and guaranteed to be unique.
+                    Your room ID is generated automatically and guaranteed to be
+                    unique.
                   </p>
                 </div>
               </div>
@@ -160,16 +175,42 @@ const CreateRoomPage: React.FC = () => {
             >
               {isLoading ? (
                 <div className="flex items-center justify-center">
-                  <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  <svg
+                    className="animate-spin -ml-1 mr-3 h-5 w-5 text-white"
+                    xmlns="http://www.w3.org/2000/svg"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                  >
+                    <circle
+                      className="opacity-25"
+                      cx="12"
+                      cy="12"
+                      r="10"
+                      stroke="currentColor"
+                      strokeWidth="4"
+                    ></circle>
+                    <path
+                      className="opacity-75"
+                      fill="currentColor"
+                      d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                    ></path>
                   </svg>
                   Creating Room...
                 </div>
               ) : (
                 <div className="flex items-center justify-center">
-                  <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                  <svg
+                    className="w-5 h-5 mr-2"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M12 4v16m8-8H4"
+                    />
                   </svg>
                   Create Room
                 </div>
@@ -214,7 +255,8 @@ const CreateRoomPage: React.FC = () => {
         </div>
 
         <div className="mt-8 text-center text-xs text-gray-500">
-          Room IDs are unique and automatically generated for secure collaboration.
+          Room IDs are unique and automatically generated for secure
+          collaboration.
         </div>
       </div>
     </div>
