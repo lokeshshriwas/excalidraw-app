@@ -1,10 +1,11 @@
-import {prismaClient} from "@repo/db";
+import { prismaClient } from "@repo/db";
 import express from "express";
 import authRouter from "./routes/auth.router";
 import roomRouter from "./routes/room.router";
 import reqRouter from "./routes/request.router";
 import adminRouter from "./routes/admin.router";
 import userRouter from "./routes/user.router";
+import subscriptionRouter from "./routes/subscription.router";
 import cors from "cors"
 const corsOptions = {
   origin: ['http://localhost:3000', 'http://localhost:5173'] // Replace with your frontend origin
@@ -12,6 +13,9 @@ const corsOptions = {
 
 const app = express();
 app.use(cors(corsOptions))
+
+// Subscription webhook must be registered before express.json() for raw body access
+app.use("/v1/subscription", subscriptionRouter);
 
 app.use(express.json());
 
@@ -22,6 +26,6 @@ app.use("/v1/admin", adminRouter);
 app.use("/v1/user", userRouter);
 
 app.listen(3002, async () => {
-    await prismaClient.$connect();
-    console.log("Server is running on http://localhost:3002");
+  await prismaClient.$connect();
+  console.log("Server is running on http://localhost:3002");
 });

@@ -20,7 +20,8 @@ const RoomCanvas = ({
   const [legitUser, setLegitUser] = useState<boolean>(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  
+  const [isReadOnly, setIsReadOnly] = useState<boolean>(false);
+
   // Prevent multiple navigation calls
   const hasNavigated = useRef(false);
 
@@ -29,7 +30,7 @@ const RoomCanvas = ({
     const fetchTokenAndCheckUser = async () => {
       try {
         const tok = await getSession();
-        
+
         if (!tok) {
           if (!hasNavigated.current) {
             hasNavigated.current = true;
@@ -44,9 +45,10 @@ const RoomCanvas = ({
         const response = await axios.get(`${BASE_URL}/room/check/${slug}`, {
           headers: { Authorization: `${tok}` },
         });
-        
-        const checkUser: { isInRoom: boolean } = response.data;
-        
+
+        const checkUser: { isInRoom: boolean; isReadOnly: boolean } =
+          response.data;
+
         if (!checkUser.isInRoom) {
           if (!hasNavigated.current) {
             hasNavigated.current = true;
@@ -57,6 +59,12 @@ const RoomCanvas = ({
         }
 
         setLegitUser(true);
+        setIsReadOnly(checkUser.isReadOnly);
+
+        // Show a message if room is read-only
+        if (checkUser.isReadOnly) {
+          console.log("Room is in read-only mode due to subscription limits");
+        }
       } catch (error) {
         console.error("Error checking user authorization:", error);
         setError("Failed to verify room access");
@@ -76,7 +84,7 @@ const RoomCanvas = ({
   useEffect(() => {
     if (token && roomId !== null && legitUser) {
       const ws = new WebSocket(`${WS_URL}?token=${token}`);
-      
+
       ws.onopen = () => {
         console.log("WebSocket connected");
         setSocket(ws);
@@ -115,7 +123,28 @@ const RoomCanvas = ({
     return <div className="text-center p-4">Connecting...</div>;
   }
 
-  return <Canvas roomId={roomId} socket={socket} legitUser={legitUser} readOnly={false} />;
+  return (
+    <div className="relative">
+      {isReadOnly && (
+        <div className="flex items-center justify-center fixed top-0 left-0 right-0 bg-yellow-500 text-black text-center py-2  text-sm font-medium">
+          Read-only mode - This room is view-only due to subscription limits
+          <br />
+          <button onClick={() => router.push("/pricing")} className="">
+            &nbsp; &nbsp;
+            <span className="underline text-white cursor-pointer">
+              Start Editing
+            </span>
+          </button>
+        </div>
+      )}
+      <Canvas
+        roomId={roomId}
+        socket={socket}
+        legitUser={legitUser}
+        readOnly={isReadOnly}
+      />
+    </div>
+  );
 };
 
 export default RoomCanvas;

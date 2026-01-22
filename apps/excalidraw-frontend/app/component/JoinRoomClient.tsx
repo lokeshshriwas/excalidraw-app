@@ -5,6 +5,7 @@ import React, { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import axios from "axios";
 import { BASE_URL } from "../config";
+import FloatingUpgradeWidget from "./FloatingUpgradeWidget";
 
 const JoinRoomClient: React.FC = () => {
   const router = useRouter();
@@ -31,26 +32,26 @@ const JoinRoomClient: React.FC = () => {
       // https://yourapp.com/canvas/room-123 -> room-123
       // https://yourapp.com/room/room-123 -> room-123
       // room-123 -> room-123
-      
+
       const trimmedLink = link.trim();
-      
+
       // If it's already just a slug, return it
-      if (trimmedLink.startsWith('room-') && !trimmedLink.includes('/')) {
+      if (trimmedLink.startsWith("room-") && !trimmedLink.includes("/")) {
         return trimmedLink;
       }
-      
+
       // If it's a full URL, extract the last part
-      const urlParts = trimmedLink.split('/');
+      const urlParts = trimmedLink.split("/");
       const lastPart = urlParts[urlParts.length - 1];
-      
+
       // Validate that it looks like a room slug
-      if (lastPart && lastPart.startsWith('room-')) {
+      if (lastPart && lastPart.startsWith("room-")) {
         return lastPart;
       }
-      
-      throw new Error('Invalid room link format');
+
+      throw new Error("Invalid room link format");
     } catch (error) {
-      throw new Error('Unable to extract room ID from the provided link');
+      throw new Error("Unable to extract room ID from the provided link");
     }
   };
 
@@ -68,22 +69,22 @@ const JoinRoomClient: React.FC = () => {
       // Extract slug from the provided link
       const roomSlug = extractSlugFromLink(roomLink);
       const msg = message;
-      
+
       // Send join request to backend
       const response = await axios.post(
         `${BASE_URL}/req/requestJoin`, // Adjust endpoint as needed
-        { roomSlug: roomSlug, message : msg },
+        { roomSlug: roomSlug, message: msg },
         {
           headers: {
             "Content-Type": "application/json",
             Authorization: `${token}`,
           },
-        }
+        },
       );
 
       setSuccess(
-        response.data.message || 
-        "Join request sent successfully! The room admin will review your request."
+        response.data.message ||
+          "Join request sent successfully! The room admin will review your request.",
       );
       setRoomLink(""); // Clear the input
       setMessage(""); // Clear the message input
@@ -96,12 +97,14 @@ const JoinRoomClient: React.FC = () => {
       } else if (error.response?.status === 404) {
         setError("Room not found. Please check the link and try again.");
       } else if (error.response?.status === 409) {
-        setError("You've already requested to join this room or are already a member.");
+        setError(
+          "You've already requested to join this room or are already a member.",
+        );
       } else {
         setError(
           error.response?.data?.message ||
-          error.message ||
-          "Failed to send join request. Please try again."
+            error.message ||
+            "Failed to send join request. Please try again.",
         );
       }
     } finally {
@@ -110,7 +113,7 @@ const JoinRoomClient: React.FC = () => {
   };
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
-    if (roomLink.trim() === "") return; 
+    if (roomLink.trim() === "") return;
     if (e.key === "Enter") {
       handleJoinRequest();
     }
@@ -132,9 +135,9 @@ const JoinRoomClient: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-[#0d0d0d] flex items-start justify-center px-4 py-8">
+      <FloatingUpgradeWidget />
       {/* Background gradient - fixed to cover full screen */}
       <div className="fixed inset-0 bg-gradient-to-br from-blue-900/20 via-purple-900/10 to-pink-900/20 pointer-events-none" />
-      
 
       {/* Main container - with proper z-index */}
       <div className="w-full max-w-md relative z-10">
@@ -155,9 +158,7 @@ const JoinRoomClient: React.FC = () => {
               />
             </svg>
           </div>
-          <h1 className="text-2xl font-semibold text-white mb-2">
-            Join Room
-          </h1>
+          <h1 className="text-2xl font-semibold text-white mb-2">Join Room</h1>
           <p className="text-gray-400 text-sm">
             Enter a room link to request access
           </p>
@@ -180,7 +181,10 @@ const JoinRoomClient: React.FC = () => {
           <div className="space-y-6">
             {/* Room link input */}
             <div>
-              <label htmlFor="roomLink" className="block text-sm font-medium text-gray-300 mb-2">
+              <label
+                htmlFor="roomLink"
+                className="block text-sm font-medium text-gray-300 mb-2"
+              >
                 Room Link
               </label>
               <div className="relative">
@@ -200,13 +204,26 @@ const JoinRoomClient: React.FC = () => {
                   className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-white transition-colors duration-200"
                   title="Paste from clipboard"
                 >
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                  <svg
+                    className="w-5 h-5"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"
+                    />
                   </svg>
                 </button>
               </div>
 
-              <label htmlFor="message" className="block text-sm font-medium text-gray-300 mb-2 mt-5">
+              <label
+                htmlFor="message"
+                className="block text-sm font-medium text-gray-300 mb-2 mt-5"
+              >
                 Message For Admin (Optional)
               </label>
               <div className="relative">
@@ -259,16 +276,42 @@ const JoinRoomClient: React.FC = () => {
             >
               {isLoading ? (
                 <div className="flex items-center justify-center">
-                  <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  <svg
+                    className="animate-spin -ml-1 mr-3 h-5 w-5 text-white"
+                    xmlns="http://www.w3.org/2000/svg"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                  >
+                    <circle
+                      className="opacity-25"
+                      cx="12"
+                      cy="12"
+                      r="10"
+                      stroke="currentColor"
+                      strokeWidth="4"
+                    ></circle>
+                    <path
+                      className="opacity-75"
+                      fill="currentColor"
+                      d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                    ></path>
                   </svg>
                   Sending Request...
                 </div>
               ) : (
                 <div className="flex items-center justify-center">
-                  <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+                  <svg
+                    className="w-5 h-5 mr-2"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"
+                    />
                   </svg>
                   Send Join Request
                 </div>
@@ -290,8 +333,8 @@ const JoinRoomClient: React.FC = () => {
 
           {/* Create room option */}
           <div className="text-center">
-            <button 
-              onClick={() => router.push('/joinRoom')}
+            <button
+              onClick={() => router.push("/joinRoom")}
               className="text-purple-400 hover:text-purple-300 font-medium transition-colors duration-200"
             >
               Create your own room
@@ -301,14 +344,14 @@ const JoinRoomClient: React.FC = () => {
 
         {/* Quick actions */}
         <div className="mt-6 grid grid-cols-2 gap-3">
-          <button 
+          <button
             onClick={() => setRoomLink("")}
             disabled={!roomLink}
             className="bg-[#1a1a1a] border border-gray-700 hover:border-gray-600 disabled:opacity-50 disabled:cursor-not-allowed text-gray-300 hover:text-white py-2 px-4 rounded-lg transition-all duration-200 text-sm"
           >
             Clear
           </button>
-          <button 
+          <button
             onClick={() => router.back()}
             className="bg-[#1a1a1a] border border-gray-700 hover:border-gray-600 text-gray-300 hover:text-white py-2 px-4 rounded-lg transition-all duration-200 text-sm"
           >
@@ -318,7 +361,8 @@ const JoinRoomClient: React.FC = () => {
 
         {/* Footer */}
         <div className="mt-8 text-center text-xs text-gray-500">
-          Room admins will be notified of your join request and can approve or deny access.
+          Room admins will be notified of your join request and can approve or
+          deny access.
         </div>
       </div>
     </div>

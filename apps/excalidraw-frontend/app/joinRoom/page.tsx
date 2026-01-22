@@ -6,6 +6,7 @@ import axios from "axios";
 import { BASE_URL } from "../config";
 import { v4 as uuidv4 } from "uuid";
 import UpgradeModal from "../component/UpgradeModal";
+import FloatingUpgradeWidget from "../component/FloatingUpgradeWidget";
 
 const CreateRoomPage: React.FC = () => {
   const router = useRouter();
@@ -37,21 +38,7 @@ const CreateRoomPage: React.FC = () => {
     setError("");
 
     try {
-      const response = await axios.get(`${BASE_URL}/user/myRooms`, {
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `${token}`,
-        },
-      });
-
-      const {adminRooms} = response.data;
-      if (adminRooms?.length >= 2) {
-        setIsLoading(false);
-        setShowUpgradeModal(true); 
-        return;
-      }
-
-
+      // Create room - backend will check subscription-based limits
       await axios.post(
         `${BASE_URL}/room/createRoom`,
         { name: roomId },
@@ -60,12 +47,19 @@ const CreateRoomPage: React.FC = () => {
             "Content-Type": "application/json",
             Authorization: `${token}`,
           },
-        }
+        },
       );
 
       router.push(`/canvas/${roomId}`);
     } catch (error: any) {
       console.error("Room creation failed:", error);
+
+      // Check if backend says user needs to upgrade
+      if (error.response?.data?.needsUpgrade) {
+        setShowUpgradeModal(true);
+        return;
+      }
+
       if (error.response?.status === 401) {
         setError("Authentication failed. Please login again.");
         localStorage.removeItem("token");
@@ -73,7 +67,7 @@ const CreateRoomPage: React.FC = () => {
       } else {
         setError(
           error.response?.data?.message ||
-            "Failed to create room. Please try again."
+            "Failed to create room. Please try again.",
         );
       }
     } finally {
@@ -87,6 +81,7 @@ const CreateRoomPage: React.FC = () => {
         onClose={() => setShowUpgradeModal(false)}
         show={showUpgradeModal}
       />
+      <FloatingUpgradeWidget />
       {/* Background gradient */}
       <div className="fixed inset-0 bg-gradient-to-br from-blue-900/20 via-purple-900/10 to-pink-900/20 pointer-events-none" />
       {/* Main container */}

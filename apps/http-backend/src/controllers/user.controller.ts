@@ -75,7 +75,7 @@ export const cancelJoinRequestController = async (req: any, res: any) => {
   }
 };
 
-// GET /api/user/profile - Get user's profile
+// GET /api/user/profile - Get user's profile with subscription status
 export const userProfileController = async (req: any, res: any) => {
   try {
     const userId = req.userId;
@@ -89,6 +89,13 @@ export const userProfileController = async (req: any, res: any) => {
         name: true,
         email: true,
         avatar: true,
+        subscription: {
+          select: {
+            planType: true,
+            status: true,
+            endDate: true,
+          },
+        },
       },
     });
 
@@ -97,5 +104,5 @@ export const userProfileController = async (req: any, res: any) => {
     console.error("Error fetching user profile:", error);
     res.status(500).json({ error: "Failed to fetch user profile" });
   }
-};      
+};
 

@@ -22,6 +22,7 @@ model User {
   userRooms    Room[]        @relation(name: "UserRelation")
   joinRequests JoinRequest[]
   subscription Subscription? // One-to-one relation
+  payments     Payment[]     // Payment history
 }
 
 model Subscription {
@@ -38,7 +39,28 @@ model Subscription {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  payments Payment[] // Payments linked to this subscription
+}
+
+// Payment model for Razorpay integration - tracks all payment attempts/transactions
+model Payment {
+  id                String        @id @default(uuid())
+  userId            String
+  subscriptionId    String?
+  razorpayOrderId   String        @unique
+  razorpayPaymentId String?       @unique
+  razorpaySignature String?
+  amount            Int           // Amount in paise (e.g., 100000 = ₹1000)
+  currency          String        @default("INR")
+  status            PaymentStatus @default(PENDING)
+  failureReason     String?       // Store failure reason if payment fails
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  subscription Subscription? @relation(fields: [subscriptionId], references: [id])
 }
 
 model Room {
@@ -103,4 +125,12 @@ enum SubscriptionStatus {
 enum RoomMode {
   EDIT
   READONLY
+}
+
+// Payment status for Razorpay transactions
+enum PaymentStatus {
+  PENDING    // Order created, awaiting payment
+  SUCCESS    // Payment verified and successful
+  FAILED     // Payment failed or rejected
+  REFUNDED   // Payment was refunded
 }

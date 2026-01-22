@@ -1,0 +1,368 @@
+# Subscription & Payment System - Implementation Walkthrough
+
+Complete Razorpay-based subscription system for upgrading users from FREE to PREMIUM plan.
+
+## Architecture Overview
+
+```mermaid
+sequenceDiagram
+    participant U as User
+    participant F as Frontend
+    participant B as Backend
+    participant R as Razorpay
+    participant D as Database
+
+    U->>F: Click Upgrade
+    F->>B: POST /subscription/create-order
+    B->>R: Create Order
+    R-->>B: Order ID
+    B->>D: Save Payment (PENDING)
+    B-->>F: Order details
+    F->>R: Open Checkout
+    U->>R: Complete Payment
+    R-->>F: Payment response
+    F->>B: POST /subscription/verify
+    B->>B: Verify signature
+    B->>D: Update Payment (SUCCESS)
+    B->>D: Activate Subscription
+    B-->>F: Success
+    R->>B: Webhook (backup)
+```
+
+---
+
+## Files Changed
+
+### Database Layer
+
+| File | Change |
+|------|--------|
+| [schema.prisma](file:///c:/Projects/excalidraw-app/packages/db/prisma/schema.prisma) | Added [Payment](file:///c:/Projects/excalidraw-app/apps/excalidraw-frontend/app/component/RazorpayCheckout.tsx#58-148) model and `PaymentStatus` enum |
+
+```diff:schema.prisma
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id       String  @id @default(uuid())
+  email    String  @unique
+  password String?
+  name     String
+  avatar   String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  chats        Chat[]
+  adminRooms   Room[]        @relation(name: "AdminRelation")
+  userRooms    Room[]        @relation(name: "UserRelation")
+  joinRequests JoinRequest[]
+  subscription Subscription? // One-to-one relation
+}
+
+model Subscription {
+  id                 String             @id @default(uuid())
+  userId             String             @unique
+  planType           PlanType           @default(FREE)
+  status             SubscriptionStatus @default(ACTIVE)
+  startDate          DateTime           @default(now())
+  endDate            DateTime?
+  currentPeriodStart DateTime?
+  currentPeriodEnd   DateTime?
+  canceledAt         DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Room {
+  id        Int      @id @default(autoincrement())
+  slug      String   @unique
+  mode      RoomMode @default(EDIT) // EDIT or READONLY
+  priority  Int      @default(0) // Higher number = higher priority
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  chats        Chat[]
+  joinRequests JoinRequest[]
+  adminId      String
+  admin        User          @relation(name: "AdminRelation", fields: [adminId], references: [id])
+  users        User[]        @relation(name: "UserRelation")
+}
+
+model JoinRequest {
+  id        String            @id @default(uuid())
+  roomId    Int
+  userId    String
+  status    JoinRequestStatus @default(PENDING)
+  message   String?
+  createdAt DateTime          @default(now())
+  updatedAt DateTime          @updatedAt
+
+  room Room @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([roomId, userId])
+}
+
+model Chat {
+  id        String   @id @default(uuid()) @db.Uuid
+  roomId    Int
+  message   String
+  userId    String
+  timeStamp DateTime
+
+  user User @relation(fields: [userId], references: [id])
+  room Room @relation(fields: [roomId], references: [id], onDelete: Cascade)
+}
+
+enum JoinRequestStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum PlanType {
+  FREE
+  PREMIUM
+}
+
+enum SubscriptionStatus {
+  ACTIVE
+  EXPIRED
+  CANCELED
+  TRIALING
+}
+
+enum RoomMode {
+  EDIT
+  READONLY
+}
+===
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id       String  @id @default(uuid())
+  email    String  @unique
+  password String?
+  name     String
+  avatar   String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  chats        Chat[]
+  adminRooms   Room[]        @relation(name: "AdminRelation")
+  userRooms    Room[]        @relation(name: "UserRelation")
+  joinRequests JoinRequest[]
+  subscription Subscription? // One-to-one relation
+  payments     Payment[]     // Payment history
+}
+
+model Subscription {
+  id                 String             @id @default(uuid())
+  userId             String             @unique
+  planType           PlanType           @default(FREE)
+  status             SubscriptionStatus @default(ACTIVE)
+  startDate          DateTime           @default(now())
+  endDate            DateTime?
+  currentPeriodStart DateTime?
+  currentPeriodEnd   DateTime?
+  canceledAt         DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  payments Payment[] // Payments linked to this subscription
+}
+
+// Payment model for Razorpay integration - tracks all payment attempts/transactions
+model Payment {
+  id                String        @id @default(uuid())
+  userId            String
+  subscriptionId    String?
+  razorpayOrderId   String        @unique
+  razorpayPaymentId String?       @unique
+  razorpaySignature String?
+  amount            Int           // Amount in paise (e.g., 100000 = ₹1000)
+  currency          String        @default("INR")
+  status            PaymentStatus @default(PENDING)
+  failureReason     String?       // Store failure reason if payment fails
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  subscription Subscription? @relation(fields: [subscriptionId], references: [id])
+}
+
+model Room {
+  id        Int      @id @default(autoincrement())
+  slug      String   @unique
+  mode      RoomMode @default(EDIT) // EDIT or READONLY
+  priority  Int      @default(0) // Higher number = higher priority
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  chats        Chat[]
+  joinRequests JoinRequest[]
+  adminId      String
+  admin        User          @relation(name: "AdminRelation", fields: [adminId], references: [id])
+  users        User[]        @relation(name: "UserRelation")
+}
+
+model JoinRequest {
+  id        String            @id @default(uuid())
+  roomId    Int
+  userId    String
+  status    JoinRequestStatus @default(PENDING)
+  message   String?
+  createdAt DateTime          @default(now())
+  updatedAt DateTime          @updatedAt
+
+  room Room @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([roomId, userId])
+}
+
+model Chat {
+  id        String   @id @default(uuid()) @db.Uuid
+  roomId    Int
+  message   String
+  userId    String
+  timeStamp DateTime
+
+  user User @relation(fields: [userId], references: [id])
+  room Room @relation(fields: [roomId], references: [id], onDelete: Cascade)
+}
+
+enum JoinRequestStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum PlanType {
+  FREE
+  PREMIUM
+}
+
+enum SubscriptionStatus {
+  ACTIVE
+  EXPIRED
+  CANCELED
+  TRIALING
+}
+
+enum RoomMode {
+  EDIT
+  READONLY
+}
+
+// Payment status for Razorpay transactions
+enum PaymentStatus {
+  PENDING    // Order created, awaiting payment
+  SUCCESS    // Payment verified and successful
+  FAILED     // Payment failed or rejected
+  REFUNDED   // Payment was refunded
+}
+```
+
+---
+
+### Backend Layer
+
+| File | Change |
+|------|--------|
+| [config.ts](file:///c:/Projects/excalidraw-app/packages/backend-common/src/config.ts) | Added Razorpay config and subscription constants |
+| [subscription.service.ts](file:///c:/Projects/excalidraw-app/apps/http-backend/src/services/subscription.service.ts) | **[NEW]** Subscription validation and business logic |
+| [subscription.controller.ts](file:///c:/Projects/excalidraw-app/apps/http-backend/src/controllers/subscription.controller.ts) | **[NEW]** Razorpay order, verify, webhook handlers |
+| [subscription.router.ts](file:///c:/Projects/excalidraw-app/apps/http-backend/src/routes/subscription.router.ts) | **[NEW]** Subscription API routes |
+| [room.controller.ts](file:///c:/Projects/excalidraw-app/apps/http-backend/src/controllers/room.controller.ts) | Dynamic canvas limits based on subscription |
+| [user.controller.ts](file:///c:/Projects/excalidraw-app/apps/http-backend/src/controllers/user.controller.ts) | Added subscription to profile response |
+| [index.ts](file:///c:/Projects/excalidraw-app/apps/http-backend/src/index.ts) | Registered subscription router |
+
+---
+
+### Frontend Layer
+
+| File | Change |
+|------|--------|
+| [useSubscription.ts](file:///c:/Projects/excalidraw-app/apps/excalidraw-frontend/app/hooks/useSubscription.ts) | **[NEW]** Hook for subscription status |
+| [RazorpayCheckout.tsx](file:///c:/Projects/excalidraw-app/apps/excalidraw-frontend/app/component/RazorpayCheckout.tsx) | **[NEW]** Razorpay checkout component |
+| [SubscriptionBadge.tsx](file:///c:/Projects/excalidraw-app/apps/excalidraw-frontend/app/component/SubscriptionBadge.tsx) | **[NEW]** Plan status display |
+| [pricing/page.tsx](file:///c:/Projects/excalidraw-app/apps/excalidraw-frontend/app/pricing/page.tsx) | Dynamic upgrade flow with checkout |
+
+---
+
+## API Endpoints
+
+| Method | Endpoint | Auth | Description |
+|--------|----------|------|-------------|
+| `POST` | `/v1/subscription/create-order` | ✅ | Create Razorpay order |
+| `POST` | `/v1/subscription/verify` | ✅ | Verify payment after checkout |
+| `POST` | `/v1/subscription/webhook` | ❌* | Handle Razorpay webhooks |
+| `GET` | `/v1/subscription/status` | ✅ | Get subscription status |
+| `GET` | `/v1/subscription/payments` | ✅ | Get payment history |
+
+*Webhook is public but signature-verified using Razorpay API secret
+
+---
+
+## Setup Instructions
+
+### 1. Environment Variables
+
+**Backend** ([apps/http-backend/.env](file:///c:/Projects/excalidraw-app/apps/http-backend/.env)):
+```env
+RAZORPAY_KEY_ID=rzp_test_xxxxxxxxxxxxx
+RAZORPAY_KEY_SECRET=your-razorpay-key-secret
+```
+
+**Frontend** ([apps/excalidraw-frontend/.env](file:///c:/Projects/excalidraw-app/apps/excalidraw-frontend/.env)):
+```env
+NEXT_PUBLIC_RAZORPAY_KEY_ID=rzp_test_xxxxxxxxxxxxx
+```
+
+### 2. Run Migration
+
+```bash
+cd packages/db
+npx prisma migrate dev
+```
+
+### 3. Configure Razorpay Webhook (Optional)
+
+1. Go to [Razorpay Dashboard](https://dashboard.razorpay.com/app/webhooks)
+2. Add webhook URL: `https://your-domain.com/v1/subscription/webhook`
+3. Select events: `payment.captured`, `payment.failed`
+
+> [!NOTE]
+> Webhook is a backup mechanism. Primary verification happens client-side after checkout.
+
+---
+
+## User Flow Summary
+
+| Plan | Canvas Limit | Visibility | Edit Access |
+|------|-------------|------------|-------------|
+| FREE | 2 | All owned | ✅ Full |
+| PREMIUM | 10 | All owned | ✅ Full |
+| EXPIRED | 2 (visible) | 2 most recent | ❌ Read-only |

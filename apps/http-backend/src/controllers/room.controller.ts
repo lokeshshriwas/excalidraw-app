@@ -1,5 +1,6 @@
 import { CreateRoomSchema } from "@repo/common";
 import { prismaClient } from "@repo/db";
+import { canUserCreateCanvas } from "../services/subscription.service";
 
 export const createRoomController = async (req: any, res: any) => {
   const parsedData = CreateRoomSchema.safeParse(req.body);
@@ -10,14 +11,14 @@ export const createRoomController = async (req: any, res: any) => {
   const userId = req.userId; // from auth middleware
 
   try {
-    // Check how many rooms this user has already created as admin
-    const existingRooms = await prismaClient.room.count({
-      where: { adminId: userId },
-    });
+    // Check subscription-based canvas limits
+    const canCreate = await canUserCreateCanvas(userId);
+    console.log('Canvas creation check for user:', userId, 'Result:', canCreate);
 
-    if (existingRooms >= 2) {
+    if (!canCreate.allowed) {
       return res.status(403).send({
-        message: "You can create only 2 rooms as admin. Join others as a participant.",
+        message: canCreate.reason,
+        needsUpgrade: true,
       });
     }
 
@@ -102,7 +103,18 @@ export const checkUserInRoom = async (req: any, res: any) => {
       where: { slug },
       include: {
         users: { select: { id: true } },
-        admin: { select: { id: true } },
+        admin: {
+          select: {
+            id: true,
+            subscription: {
+              select: {
+                planType: true,
+                status: true,
+                endDate: true,
+              }
+            }
+          }
+        },
       },
     });
 
@@ -114,7 +126,56 @@ export const checkUserInRoom = async (req: any, res: any) => {
       room.admin.id === userId ||
       room.users.some((u) => u.id === userId);
 
-    return res.status(200).json({ isInRoom: isUserInRoom });
+    if (!isUserInRoom) {
+      return res.status(200).json({ isInRoom: false, isReadOnly: false });
+    }
+
+    // Check if room should be read-only based on admin's subscription
+    let isReadOnly = false;
+    const adminSubscription = room.admin.subscription;
+
+    if (adminSubscription) {
+      const now = new Date();
+      const isExpired = adminSubscription.planType === 'PREMIUM' &&
+        adminSubscription.endDate !== null &&
+        adminSubscription.endDate < now;
+
+      const isFreeUser = adminSubscription.planType === 'FREE';
+
+      // If admin's subscription is expired or free, check if this room is in the top 2 most recent
+      if (isExpired || isFreeUser) {
+        // Get admin's 2 most recent rooms
+        const recentRooms = await prismaClient.room.findMany({
+          where: { adminId: room.admin.id },
+          orderBy: { createdAt: 'desc' },
+          take: 2,
+          select: { id: true },
+        });
+
+        const recentRoomIds = recentRooms.map(r => r.id);
+
+        // If this room is NOT in the top 2, it's read-only
+        if (!recentRoomIds.includes(room.id)) {
+          isReadOnly = true;
+        }
+      }
+    } else {
+      // No subscription = FREE user, check if room is in top 2 most recent
+      const recentRooms = await prismaClient.room.findMany({
+        where: { adminId: room.admin.id },
+        orderBy: { createdAt: 'desc' },
+        take: 2,
+        select: { id: true },
+      });
+
+      const recentRoomIds = recentRooms.map(r => r.id);
+
+      if (!recentRoomIds.includes(room.id)) {
+        isReadOnly = true;
+      }
+    }
+
+    return res.status(200).json({ isInRoom: isUserInRoom, isReadOnly });
   } catch (error: any) {
     console.error(error);
     return res.status(500).json({ message: "Failed to check user in room" });
