@@ -7,8 +7,15 @@ import adminRouter from "./routes/admin.router";
 import userRouter from "./routes/user.router";
 import subscriptionRouter from "./routes/subscription.router";
 import cors from "cors"
+
+// CORS configuration - support environment variable for production
+const defaultOrigins = ['http://localhost:3000', 'http://localhost:5173'];
+const corsOrigins = process.env.CORS_ORIGINS
+  ? process.env.CORS_ORIGINS.split(',')
+  : defaultOrigins;
+
 const corsOptions = {
-  origin: ['http://localhost:3000', 'http://localhost:5173'] // Replace with your frontend origin
+  origin: corsOrigins
 };
 
 const app = express();
