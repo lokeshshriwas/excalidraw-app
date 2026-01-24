@@ -11,10 +11,8 @@ COPY pnpm-workspace.yaml ./
 COPY package.json ./
 COPY pnpm-lock.yaml ./
 
-# Copy packages that ws-backend depends on
-COPY packages/backend-common ./packages/backend-common
-COPY packages/db ./packages/db
-COPY packages/typescript-config ./packages/typescript-config
+# Copy all packages
+COPY packages ./packages
 
 # Copy ws-backend
 COPY apps/ws-backend ./apps/ws-backend
@@ -26,7 +24,11 @@ RUN pnpm install --frozen-lockfile
 WORKDIR /app/packages/db
 RUN pnpm prisma generate
 
-# Build the application
+# Build backend-common (TypeScript to JS)
+WORKDIR /app/packages/backend-common
+RUN pnpm exec tsc --outDir ./dist --declaration || true
+
+# Build the ws-backend application
 WORKDIR /app/apps/ws-backend
 RUN pnpm run build
 
@@ -38,16 +40,16 @@ WORKDIR /app
 # Install pnpm
 RUN npm install -g pnpm
 
-# Copy workspace configuration
+# Copy workspace files
 COPY pnpm-workspace.yaml ./
 COPY package.json ./
 COPY pnpm-lock.yaml ./
 
 # Copy built packages
 COPY --from=builder /app/packages ./packages
-COPY --from=builder /app/apps/ws-backend/dist ./apps/ws-backend/dist
-COPY --from=builder /app/apps/ws-backend/package.json ./apps/ws-backend/package.json
 COPY --from=builder /app/node_modules ./node_modules
+COPY --from=builder /app/apps/ws-backend/dist ./apps/ws-backend/dist
+COPY --from=builder /app/apps/ws-backend/package.json ./apps/ws-backend/
 COPY --from=builder /app/apps/ws-backend/node_modules ./apps/ws-backend/node_modules
 
 WORKDIR /app/apps/ws-backend

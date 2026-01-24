@@ -11,10 +11,8 @@ COPY pnpm-workspace.yaml ./
 COPY package.json ./
 COPY pnpm-lock.yaml ./
 
-# Copy packages that frontend depends on
-COPY packages/backend-common ./packages/backend-common
-COPY packages/ui ./packages/ui
-COPY packages/typescript-config ./packages/typescript-config
+# Copy all packages
+COPY packages ./packages
 
 # Copy frontend
 COPY apps/excalidraw-frontend ./apps/excalidraw-frontend
@@ -49,10 +47,10 @@ WORKDIR /app
 RUN addgroup --system --gid 1001 nodejs
 RUN adduser --system --uid 1001 nextjs
 
-# Copy necessary files
-COPY --from=builder /app/apps/excalidraw-frontend/public ./public
-COPY --from=builder --chown=nextjs:nodejs /app/apps/excalidraw-frontend/.next/standalone ./
-COPY --from=builder --chown=nextjs:nodejs /app/apps/excalidraw-frontend/.next/static ./.next/static
+# Copy the standalone output - Next.js 15 structure
+COPY --from=builder /app/apps/excalidraw-frontend/.next/standalone ./
+COPY --from=builder /app/apps/excalidraw-frontend/.next/static ./apps/excalidraw-frontend/.next/static
+COPY --from=builder /app/apps/excalidraw-frontend/public ./apps/excalidraw-frontend/public
 
 USER nextjs
 
@@ -61,4 +59,5 @@ EXPOSE 3000
 ENV PORT=3000
 ENV HOSTNAME="0.0.0.0"
 
-CMD ["node", "server.js"]
+# The server.js is inside the standalone folder structure
+CMD ["node", "apps/excalidraw-frontend/server.js"]
