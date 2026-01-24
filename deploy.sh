@@ -32,9 +32,9 @@ if [ -z "$DOMAIN" ]; then
     exit 1
 fi
 
-# Substitute domain in nginx config
+# Substitute domain in nginx config (use | as delimiter to avoid issues with special chars)
 echo "🔧 Configuring Nginx for domain: $DOMAIN"
-sed -i "s/DOMAIN_PLACEHOLDER/$DOMAIN/g" nginx/nginx.conf
+sed -i "s|DOMAIN_PLACEHOLDER|$DOMAIN|g" nginx/nginx.conf
 
 echo "📦 Pulling latest images from Docker Hub..."
 docker-compose -f docker-compose.prod.yml pull
