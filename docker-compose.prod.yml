@@ -55,6 +55,10 @@ services:
       args:
         NEXT_PUBLIC_WS_URL: wss://drawapp.bylokesh.in/ws
         NEXT_PUBLIC_BASE_URL: https://drawapp.bylokesh.in/v1
+        NEXT_PUBLIC_GOOGLE_CLIENT_ID: ${NEXT_PUBLIC_GOOGLE_CLIENT_ID}
+        NEXT_PUBLIC_GOOGLE_CLIENT_SECRET: ${NEXT_PUBLIC_GOOGLE_CLIENT_SECRET}
+        NEXT_PUBLIC_GITHUB_CLIENT_ID: ${NEXT_PUBLIC_GITHUB_CLIENT_ID}
+        NEXT_PUBLIC_GITHUB_CLIENT_SECRET: ${NEXT_PUBLIC_GITHUB_CLIENT_SECRET}
     container_name: excalidraw-frontend
     environment:
       NEXT_PUBLIC_WS_URL: wss://drawapp.bylokesh.in/ws
