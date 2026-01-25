@@ -15,7 +15,7 @@ if [ ! -f .env ]; then
 fi
 
 # Extract DB_PASSWORD from .env
-DB_PASSWORD=$(grep DB_PASSWORD .env | cut -d '=' -f2)
+DB_PASSWORD=$(grep DB_PASSWORD .env | cut -d '=' -f2 | tr -d '"' | tr -d "'")
 
 if [ -z "$DB_PASSWORD" ]; then
   echo "❌ DB_PASSWORD not found in .env"
