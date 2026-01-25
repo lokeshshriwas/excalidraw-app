@@ -15,9 +15,9 @@ RUN pnpm install --frozen-lockfile
 COPY --from=pruner /app/out/full/ .
 
 ARG NEXT_PUBLIC_WS_URL
-ARG NEXT_PUBLIC_HTTP_URL
+ARG NEXT_PUBLIC_BASE_URL
 ENV NEXT_PUBLIC_WS_URL=${NEXT_PUBLIC_WS_URL}
-ENV NEXT_PUBLIC_HTTP_URL=${NEXT_PUBLIC_HTTP_URL}
+ENV NEXT_PUBLIC_BASE_URL=${NEXT_PUBLIC_BASE_URL}
 
 RUN pnpm run build --filter=excalidraw-frontend...
 
