@@ -1,5 +1,4 @@
-import dotenv from 'dotenv';
-dotenv.config({ path: '../.env' });
+
 import jwt from "jsonwebtoken";
 import bcrypt from "bcryptjs";
 import { prismaClient } from "@repo/db";
@@ -8,30 +7,30 @@ import { JWT_SECRET } from "@repo/backend-common/config";
 import { Request, Response } from 'express';
 
 interface User {
-  id: string;
-  email: string;
-  name: string;
-  avatar?: string;
+    id: string;
+    email: string;
+    name: string;
+    avatar?: string;
 }
 
 export const signupController = async (req: Request, res: Response): Promise<void> => {
     const result = CreateUserSchema.safeParse(req.body);
-    
+
     if (!result.success) {
-        res.status(400).json({ 
-            error: "Invalid input", 
-            details: result.error.errors 
+        res.status(400).json({
+            error: "Invalid input",
+            details: result.error.errors
         });
         return;
     }
-    
+
     try {
         const { email, name, password } = result.data;
 
         const existingUser = await prismaClient.user.findFirst({
             where: { email }
         });
-        
+
         if (existingUser) {
             res.status(400).json({ message: "User already exists" });
             return;
@@ -39,7 +38,7 @@ export const signupController = async (req: Request, res: Response): Promise<voi
 
         const salt = bcrypt.genSaltSync(10);
         const hashedPassword = bcrypt.hashSync(password, salt);
-        
+
         const user = await prismaClient.user.create({
             data: {
                 email,
@@ -53,7 +52,7 @@ export const signupController = async (req: Request, res: Response): Promise<voi
                 avatar: true
             }
         });
-        
+
         res.status(201).json(user);
         return;
     } catch (error) {
@@ -65,11 +64,11 @@ export const signupController = async (req: Request, res: Response): Promise<voi
 
 export const signinController = async (req: Request, res: Response): Promise<void> => {
     const result = SigninSchema.safeParse(req.body);
-    
+
     if (!result.success) {
-        res.status(400).json({ 
-            error: "Invalid input", 
-            details: result.error.errors 
+        res.status(400).json({
+            error: "Invalid input",
+            details: result.error.errors
         });
         return;
     }
@@ -82,13 +81,13 @@ export const signinController = async (req: Request, res: Response): Promise<voi
         });
 
         if (!userData) {
-          res.status(400).json({ message: "User not found" });
+            res.status(400).json({ message: "User not found" });
             return;
         }
 
         if (!userData.password) {
-            res.status(400).json({ 
-                message: "This account uses OAuth login. Please use Google or GitHub to sign in." 
+            res.status(400).json({
+                message: "This account uses OAuth login. Please use Google or GitHub to sign in."
             });
             return;
         }
@@ -105,8 +104,8 @@ export const signinController = async (req: Request, res: Response): Promise<voi
         }
 
         const token = jwt.sign({ userId: userData.id }, JWT_SECRET);
-        res.status(200).json({ 
-            token: token, 
+        res.status(200).json({
+            token: token,
             message: "Login successful",
             user: {
                 id: userData.id,
@@ -134,7 +133,7 @@ export const googleOAuthController = async (req: Request, res: Response): Promis
         if (user) {
             const token = jwt.sign({ userId: user.id }, JWT_SECRET!);
             const { password, ...userWithoutPassword } = user;
-            
+
             res.status(200).json({
                 token,
                 message: "Login successful",
@@ -144,7 +143,7 @@ export const googleOAuthController = async (req: Request, res: Response): Promis
         } else {
             const generatedPassword = Math.random().toString(36).slice(-8) + Math.random().toString(36).slice(-8);
             const hashedPassword = bcrypt.hashSync(generatedPassword, 10);
-            
+
             const newUser = await prismaClient.user.create({
                 data: {
                     email,
@@ -155,7 +154,7 @@ export const googleOAuthController = async (req: Request, res: Response): Promis
             });
 
             const token = jwt.sign({ userId: newUser.id }, JWT_SECRET!);
-            
+
             res.status(201).json({
                 token,
                 message: "Account created and login successful",
@@ -177,7 +176,7 @@ export const googleOAuthController = async (req: Request, res: Response): Promis
 
 export const githubCallbackController = async (req: Request, res: Response): Promise<void> => {
     const { code } = req.body;
-    
+
     if (!code) {
         res.status(400).json({ message: 'Authorization code is required' });
         return;
@@ -201,15 +200,15 @@ export const githubCallbackController = async (req: Request, res: Response): Pro
         const tokens = await tokenResponse.json();
 
         if (tokens.error) {
-            res.status(400).json({ 
-                message: tokens.error_description || tokens.error 
+            res.status(400).json({
+                message: tokens.error_description || tokens.error
             });
             return;
         }
 
         if (!tokens.access_token) {
-            res.status(400).json({ 
-                message: 'No access token received from GitHub' 
+            res.status(400).json({
+                message: 'No access token received from GitHub'
             });
             return;
         }
@@ -223,8 +222,8 @@ export const githubCallbackController = async (req: Request, res: Response): Pro
         });
 
         if (!userResponse.ok) {
-            res.status(400).json({ 
-                message: `GitHub API error: ${userResponse.status}` 
+            res.status(400).json({
+                message: `GitHub API error: ${userResponse.status}`
             });
             return;
         }
@@ -249,8 +248,8 @@ export const githubCallbackController = async (req: Request, res: Response): Pro
         }
 
         if (!primaryEmail) {
-            res.status(400).json({ 
-                message: 'No email found in GitHub account. Please make sure your GitHub account has a public email or primary email set.' 
+            res.status(400).json({
+                message: 'No email found in GitHub account. Please make sure your GitHub account has a public email or primary email set.'
             });
             return;
         }
@@ -302,7 +301,7 @@ export const githubCallbackController = async (req: Request, res: Response): Pro
         }
     } catch (error) {
         console.error("GitHub OAuth backend error:", error);
-        res.status(500).json({ 
+        res.status(500).json({
             message: "Internal server error",
             error: error instanceof Error ? error.message : 'Unknown error'
         });

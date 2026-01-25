@@ -1,63 +1,41 @@
-# Build stage
-FROM node:20-alpine AS builder
-
+# Dockerfile for Frontend - Optimized with Turbo Prune & Standalone Output
+FROM node:20-alpine AS base
+RUN npm install -g pnpm turbo
 WORKDIR /app
 
-# Install pnpm
-RUN npm install -g pnpm
+FROM base AS pruner
+COPY . .
+RUN turbo prune excalidraw-frontend --docker
 
-# Copy workspace files
-COPY pnpm-workspace.yaml ./
-COPY package.json ./
-COPY pnpm-lock.yaml ./
-
-# Copy all packages
-COPY packages ./packages
-
-# Copy frontend
-COPY apps/excalidraw-frontend ./apps/excalidraw-frontend
-
-# Install dependencies
+FROM base AS installer
+COPY --from=pruner /app/out/json/ .
+COPY --from=pruner /app/out/pnpm-lock.yaml ./pnpm-lock.yaml
 RUN pnpm install --frozen-lockfile
 
-# Build the application
-WORKDIR /app/apps/excalidraw-frontend
+COPY --from=pruner /app/out/full/ .
 
-# Build arguments for environment variables
-ARG NEXT_PUBLIC_API_URL
 ARG NEXT_PUBLIC_WS_URL
-ARG NEXT_PUBLIC_RAZORPAY_KEY_ID
-ARG NEXT_PUBLIC_GOOGLE_CLIENT_ID
-ARG NEXT_PUBLIC_GITHUB_CLIENT_ID
+ARG NEXT_PUBLIC_HTTP_URL
+ENV NEXT_PUBLIC_WS_URL=${NEXT_PUBLIC_WS_URL}
+ENV NEXT_PUBLIC_HTTP_URL=${NEXT_PUBLIC_HTTP_URL}
 
-ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
-ENV NEXT_PUBLIC_WS_URL=$NEXT_PUBLIC_WS_URL
-ENV NEXT_PUBLIC_RAZORPAY_KEY_ID=$NEXT_PUBLIC_RAZORPAY_KEY_ID
-ENV NEXT_PUBLIC_GOOGLE_CLIENT_ID=$NEXT_PUBLIC_GOOGLE_CLIENT_ID
-ENV NEXT_PUBLIC_GITHUB_CLIENT_ID=$NEXT_PUBLIC_GITHUB_CLIENT_ID
+RUN pnpm run build --filter=excalidraw-frontend...
 
-RUN pnpm run build
-
-# Production stage
-FROM node:20-alpine AS runner
-
+FROM base AS runner
 WORKDIR /app
+ENV NODE_ENV=production
 
 # Don't run as root
 RUN addgroup --system --gid 1001 nodejs
 RUN adduser --system --uid 1001 nextjs
-
-# Copy the standalone output - Next.js 15 structure
-COPY --from=builder /app/apps/excalidraw-frontend/.next/standalone ./
-COPY --from=builder /app/apps/excalidraw-frontend/.next/static ./apps/excalidraw-frontend/.next/static
-COPY --from=builder /app/apps/excalidraw-frontend/public ./apps/excalidraw-frontend/public
-
 USER nextjs
 
-EXPOSE 3000
+COPY --from=installer /app/apps/excalidraw-frontend/public ./apps/excalidraw-frontend/public
+COPY --from=installer --chown=nextjs:nodejs /app/apps/excalidraw-frontend/.next/standalone ./
+COPY --from=installer --chown=nextjs:nodejs /app/apps/excalidraw-frontend/.next/static ./apps/excalidraw-frontend/.next/static
 
+EXPOSE 3000
 ENV PORT=3000
 ENV HOSTNAME="0.0.0.0"
 
-# The server.js is inside the standalone folder structure
 CMD ["node", "apps/excalidraw-frontend/server.js"]
