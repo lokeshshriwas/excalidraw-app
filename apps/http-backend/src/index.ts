@@ -19,6 +19,7 @@ const corsOptions = {
 };
 
 const app = express();
+app.set("trust proxy", 1); // Trust Nginx headers
 app.use(cors(corsOptions))
 
 // Subscription webhook must be registered before express.json() for raw body access
@@ -32,7 +33,7 @@ app.use("/v1/req", reqRouter);
 app.use("/v1/admin", adminRouter);
 app.use("/v1/user", userRouter);
 
-app.listen(3002, async () => {
+app.listen(3002, "0.0.0.0", async () => {
   await prismaClient.$connect();
-  console.log("Server is running on http://localhost:3002");
+  console.log("Server is running on http://0.0.0.0:3002");
 });
