@@ -123,16 +123,23 @@ export const signinController = async (req: Request, res: Response): Promise<voi
 };
 
 export const googleOAuthController = async (req: Request, res: Response): Promise<void> => {
+    console.log("👉 Google OAuth Controller HIT. Body:", req.body);
     const { email, name, avatar } = req.body;
 
     try {
+        console.log("👉 Looking for existing user:", email);
         let user = await prismaClient.user.findFirst({
             where: { email }
         });
+        console.log("👉 User lookup result:", user ? "Found" : "Not Found");
 
         if (user) {
+            console.log("👉 User exists. Signing JWT...");
+            if (!JWT_SECRET) console.error("❌ JWT_SECRET IS MISSING in controller!");
+
             const token = jwt.sign({ userId: user.id }, JWT_SECRET!);
             const { password, ...userWithoutPassword } = user;
+            console.log("👉 JWT Signed. Sending success response.");
 
             res.status(200).json({
                 token,
@@ -141,8 +148,12 @@ export const googleOAuthController = async (req: Request, res: Response): Promis
             });
             return;
         } else {
+            console.log("👉 User does NOT exist. Creating new user.");
             const generatedPassword = Math.random().toString(36).slice(-8) + Math.random().toString(36).slice(-8);
+
+            console.log("👉 Hashing password...");
             const hashedPassword = bcrypt.hashSync(generatedPassword, 10);
+            console.log("👉 Password hashed. Creating in DB...");
 
             const newUser = await prismaClient.user.create({
                 data: {
@@ -152,7 +163,9 @@ export const googleOAuthController = async (req: Request, res: Response): Promis
                     avatar: avatar || null
                 }
             });
+            console.log("👉 User created:", newUser.id);
 
+            console.log("👉 Signing JWT for new user...");
             const token = jwt.sign({ userId: newUser.id }, JWT_SECRET!);
 
             res.status(201).json({
@@ -168,7 +181,7 @@ export const googleOAuthController = async (req: Request, res: Response): Promis
             return;
         }
     } catch (error) {
-        console.error("Google OAuth error:", error);
+        console.error("❌ Google OAuth error CAUGHT:", error);
         res.status(500).json({ message: "Internal server error" });
         return;
     }
