@@ -32,6 +32,6 @@ docker run -it --rm \
   -w /app/packages/db \
   -e DATABASE_URL="postgresql://excalidraw:$DB_PASSWORD@postgres:5432/excalidraw?schema=public" \
   node:20-alpine \
-  sh -c "npm install -g prisma && npx prisma db push"
+  sh -c "npm install -g prisma@6.11.1 && npx prisma db push"
 
 echo "✅ Migrations Applied!"
