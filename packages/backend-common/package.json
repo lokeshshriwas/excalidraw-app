@@ -4,7 +4,6 @@
   "description": "",
   "license": "ISC",
   "author": "",
-  "type": "module",
   "main": "./dist/config.js",
   "types": "./dist/config.d.ts",
   "scripts": {
@@ -12,10 +11,7 @@
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "exports": {
-    "./config": {
-      "import": "./dist/config.js",
-      "types": "./dist/config.d.ts"
-    }
+    "./config": "./dist/config.js"
   },
   "devDependencies": {
     "@repo/typescript-config": "workspace:*",
