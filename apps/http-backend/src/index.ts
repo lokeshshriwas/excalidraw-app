@@ -33,6 +33,10 @@ app.use("/v1/req", reqRouter);
 app.use("/v1/admin", adminRouter);
 app.use("/v1/user", userRouter);
 
+app.get("/v1/health", (req, res) => {
+  res.status(200).json({ status: "UP" });
+});
+
 app.listen(3002, "0.0.0.0", async () => {
   await prismaClient.$connect();
   console.log("Server is running on http://0.0.0.0:3002");
