@@ -14,7 +14,7 @@ export const sendJoinRequest = async (userId: string, roomSlug: string, message:
     }
 
     // Check if user is already a member
-    const isAlreadyMember = room.users.some(user => user.id === userId);
+    const isAlreadyMember = room.users.some((user: any) => user.id === userId);
     if (isAlreadyMember) {
       throw new Error('You are already a member of this room');
     }
@@ -84,7 +84,7 @@ export const sendJoinRequest = async (userId: string, roomSlug: string, message:
 };
 
 // Function to get pending join requests for a room (for admin)
-export const getPendingJoinRequests = async (adminId : string, roomSlug: string) => {
+export const getPendingJoinRequests = async (adminId: string, roomSlug: string) => {
   try {
     // Verify admin owns the room
     const room = await prismaClient.room.findFirst({
@@ -105,13 +105,13 @@ export const getPendingJoinRequests = async (adminId : string, roomSlug: string)
         status: 'PENDING'
       },
       include: {
-        user: { 
-          select: { 
-            id: true, 
-            name: true, 
-            email: true, 
-            avatar: true 
-          } 
+        user: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            avatar: true
+          }
         }
       },
       orderBy: {
@@ -131,7 +131,7 @@ export const getPendingJoinRequests = async (adminId : string, roomSlug: string)
 };
 
 // Function for admin to approve/reject join requests
-export const handleJoinRequest = async (adminId: string, requestId: string, action: any ) => {
+export const handleJoinRequest = async (adminId: string, requestId: string, action: any) => {
   try {
     // Get the join request with room info
     const joinRequest = await prismaClient.joinRequest.findUnique({
@@ -157,11 +157,11 @@ export const handleJoinRequest = async (adminId: string, requestId: string, acti
     }
 
     // Start a transaction to handle approval
-    const result = await prismaClient.$transaction(async (tx) => {
+    const result = await prismaClient.$transaction(async (tx: any) => {
       // Update the join request status
       const updatedRequest = await tx.joinRequest.update({
         where: { id: requestId },
-        data: { 
+        data: {
           status: action,
           updatedAt: new Date()
         }
@@ -184,8 +184,8 @@ export const handleJoinRequest = async (adminId: string, requestId: string, acti
 
     return {
       success: true,
-      message: action === 'APPROVED' ? 
-        `User ${joinRequest.user.name} has been added to the room` : 
+      message: action === 'APPROVED' ?
+        `User ${joinRequest.user.name} has been added to the room` :
         `Join request from ${joinRequest.user.name} has been rejected`,
       request: result
     };
@@ -197,18 +197,18 @@ export const handleJoinRequest = async (adminId: string, requestId: string, acti
 };
 
 // Function to get all join requests for a user
-export const getUserJoinRequests = async (userId:string) => {
+export const getUserJoinRequests = async (userId: string) => {
   try {
     const joinRequests = await prismaClient.joinRequest.findMany({
       where: { userId: userId },
       include: {
-        room: { 
-          select: { 
-            id: true, 
-            slug: true, 
+        room: {
+          select: {
+            id: true,
+            slug: true,
             createdAt: true,
             admin: { select: { name: true } }
-          } 
+          }
         }
       },
       orderBy: {

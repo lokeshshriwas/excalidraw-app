@@ -105,7 +105,7 @@ export const removeUserFromRoomController = async (req: any, res: any) => {
     }
 
     // Use a transaction to ensure both operations succeed or fail together
-    await prismaClient.$transaction(async (tx) => {
+    await prismaClient.$transaction(async (tx: any) => {
       // Remove user from room
       await tx.room.update({
         where: { id: parseInt(roomId, 10) },

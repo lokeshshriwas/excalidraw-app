@@ -124,7 +124,7 @@ export const checkUserInRoom = async (req: any, res: any) => {
 
     const isUserInRoom =
       room.admin.id === userId ||
-      room.users.some((u) => u.id === userId);
+      room.users.some((u: any) => u.id === userId);
 
     if (!isUserInRoom) {
       return res.status(200).json({ isInRoom: false, isReadOnly: false });
@@ -152,7 +152,7 @@ export const checkUserInRoom = async (req: any, res: any) => {
           select: { id: true },
         });
 
-        const recentRoomIds = recentRooms.map(r => r.id);
+        const recentRoomIds = recentRooms.map((r: any) => r.id);
 
         // If this room is NOT in the top 2, it's read-only
         if (!recentRoomIds.includes(room.id)) {
@@ -168,7 +168,7 @@ export const checkUserInRoom = async (req: any, res: any) => {
         select: { id: true },
       });
 
-      const recentRoomIds = recentRooms.map(r => r.id);
+      const recentRoomIds = recentRooms.map((r: any) => r.id);
 
       if (!recentRoomIds.includes(room.id)) {
         isReadOnly = true;

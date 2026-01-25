@@ -121,7 +121,7 @@ export async function activateSubscription(
     const endDate = new Date(now);
     endDate.setDate(endDate.getDate() + SUBSCRIPTION_CONFIG.PREMIUM_DURATION_DAYS);
 
-    await prismaClient.$transaction(async (tx) => {
+    await prismaClient.$transaction(async (tx: any) => {
         // Create or update subscription
         await tx.subscription.upsert({
             where: { userId },
