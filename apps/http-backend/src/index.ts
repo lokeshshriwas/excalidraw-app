@@ -14,12 +14,30 @@ const corsOrigins = process.env.CORS_ORIGINS
   ? process.env.CORS_ORIGINS.split(',')
   : defaultOrigins;
 
+console.log('🔧 CORS Origins configured:', corsOrigins);
+console.log('🔧 Environment:', process.env.NODE_ENV);
+console.log('🔧 OAuth Config:', {
+  googleClientId: process.env.GOOGLE_CLIENT_ID ? '✓ Set' : '✗ Missing',
+  googleClientSecret: process.env.GOOGLE_CLIENT_SECRET ? '✓ Set' : '✗ Missing',
+  githubClientId: process.env.GITHUB_CLIENT_ID ? '✓ Set' : '✗ Missing',
+  githubClientSecret: process.env.GITHUB_CLIENT_SECRET ? '✓ Set' : '✗ Missing',
+});
+
 const corsOptions = {
-  origin: corsOrigins
+  origin: corsOrigins,
+  credentials: true, // Required for OAuth cookies/sessions
+  optionsSuccessStatus: 200
 };
 
 const app = express();
 app.set("trust proxy", 1); // Trust Nginx headers
+
+// Request logging middleware
+app.use((req, res, next) => {
+  console.log(`📥 ${req.method} ${req.path} - Origin: ${req.headers.origin || 'none'}`);
+  next();
+});
+
 app.use(cors(corsOptions))
 
 // Subscription webhook must be registered before express.json() for raw body access
