@@ -4,6 +4,7 @@ import React, { useEffect, useState } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import axios from "axios";
 import { BASE_URL } from "../config";
+import Image from "next/image";
 
 interface NavbarProps {
   className?: string;
@@ -14,14 +15,14 @@ const Navbar: React.FC<NavbarProps> = ({ className = "" }) => {
   const pathname = usePathname();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [profile, setProfile] = useState({
-    email : "",
-    name : "",
-    avatar : ""
+    email: "",
+    name: "",
+    avatar: "",
   });
 
-  useEffect(()=>{
+  useEffect(() => {
     const token = localStorage.getItem("token");
-    if(!token){
+    if (!token) {
       return;
     }
     const fetchProfile = async () => {
@@ -30,12 +31,11 @@ const Navbar: React.FC<NavbarProps> = ({ className = "" }) => {
           "Content-Type": "application/json",
           Authorization: `${token}`,
         },
-      })
-      setProfile(data.data)
-   }
-   fetchProfile();
-   
-  }, [])
+      });
+      setProfile(data.data);
+    };
+    fetchProfile();
+  }, []);
 
   const handleLogout = () => {
     localStorage.removeItem("token");
@@ -61,7 +61,9 @@ const Navbar: React.FC<NavbarProps> = ({ className = "" }) => {
   return (
     <>
       {/* Hamburger Button - Fixed Position */}
-      <div className={`fixed top-4 left-4 z-50 ${className} ${pathname === "/canvas" && "top-10 left-10"}`}>
+      <div
+        className={`fixed top-4 left-4 z-50 ${className} ${pathname === "/canvas" && "top-10 left-10"}`}
+      >
         <button
           onClick={() => setIsMenuOpen(!isMenuOpen)}
           className="w-12 h-12 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 rounded-full flex items-center justify-center shadow-lg transition-all duration-300 transform hover:scale-110"
@@ -105,10 +107,12 @@ const Navbar: React.FC<NavbarProps> = ({ className = "" }) => {
           <div className="p-6 border-b border-gray-800">
             <div className="flex items-center space-x-3">
               <div className="w-10 h-10 flex items-center justify-center">
-                <span className="text-white font-bold text-lg"></span>
+                <Image src="/logo.png" alt="logo" width={70} height={70} />
               </div>
               <div>
-                <h2 className="text-white font-semibold text-lg">Canvas App</h2>
+                <h2 className="text-white font-semibold text-lg">
+                  DrawTogether
+                </h2>
                 <p className="text-gray-400 text-sm">Collaborative Drawing</p>
               </div>
             </div>
@@ -140,14 +144,22 @@ const Navbar: React.FC<NavbarProps> = ({ className = "" }) => {
             <div className="mb-4 p-3 bg-[#0d0d0d] rounded-lg">
               <div className="flex items-center space-x-3">
                 <div className="w-8 h-8 bg-gradient-to-r from-green-500 to-blue-500 rounded-full flex items-center justify-center">
-                  {
-                    profile.avatar ?
-                    <img className="h-full w-full rounded-full" src={profile.avatar} /> : 
-                    <img className="h-full w-full rounded-full" src={"./default_avatar.png"} />
-                  }
+                  {profile.avatar ? (
+                    <img
+                      className="h-full w-full rounded-full"
+                      src={profile.avatar}
+                    />
+                  ) : (
+                    <img
+                      className="h-full w-full rounded-full"
+                      src={"./default_avatar.png"}
+                    />
+                  )}
                 </div>
                 <div>
-                  <p className="text-white text-sm font-medium">{profile?.name ? profile.name : "User"}</p>
+                  <p className="text-white text-sm font-medium">
+                    {profile?.name ? profile.name : "User"}
+                  </p>
                   <p className="text-gray-400 text-xs">Online</p>
                 </div>
               </div>

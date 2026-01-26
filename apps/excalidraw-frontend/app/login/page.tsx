@@ -1,43 +1,44 @@
-'use client';
-import { useRouter } from 'next/navigation';
-import { useState } from 'react';
-import { BASE_URL } from '../config';
-import Link from 'next/link';
-import OAuth from '../component/OAuth';
+"use client";
+import { useRouter } from "next/navigation";
+import { useState } from "react";
+import { BASE_URL } from "../config";
+import Link from "next/link";
+import OAuth from "../component/OAuth";
+import Image from "next/image";
 
 export default function LoginPage() {
   const router = useRouter();
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState('');
+  const [error, setError] = useState("");
 
   const handleLogin = async () => {
     if (!email || !password) {
-      setError('Please fill in all fields');
+      setError("Please fill in all fields");
       return;
     }
 
     setIsLoading(true);
-    setError('');
+    setError("");
 
     try {
       const response = await fetch(`${BASE_URL}/auth/signin`, {
-        method: 'POST',
+        method: "POST",
         body: JSON.stringify({ email, password }),
-        headers: { 'Content-Type': 'application/json' },
+        headers: { "Content-Type": "application/json" },
       });
 
       const data = await response.json();
-      
+
       if (data.token) {
         localStorage.setItem("token", data.token);
-        router.push('/joinRoom');
+        router.push("/joinRoom");
       } else {
-        setError(data.message || 'Invalid credentials. Please try again.');
+        setError(data.message || "Invalid credentials. Please try again.");
       }
     } catch (err) {
-      setError('Something went wrong. Please try again.');
+      setError("Something went wrong. Please try again.");
     } finally {
       setIsLoading(false);
     }
@@ -46,7 +47,7 @@ export default function LoginPage() {
   const handleOAuthSuccess = (token: string, user: any) => {
     localStorage.setItem("token", token);
     localStorage.setItem("user", JSON.stringify(user));
-    router.push('/joinRoom');
+    router.push("/joinRoom");
   };
 
   const handleOAuthError = (errorMessage: string) => {
@@ -54,7 +55,7 @@ export default function LoginPage() {
   };
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter') {
+    if (e.key === "Enter") {
       handleLogin();
     }
   };
@@ -63,15 +64,17 @@ export default function LoginPage() {
     <div className="min-h-screen bg-[#0d0d0d] flex items-center justify-center px-4">
       {/* Background gradient */}
       <div className="fixed inset-0 bg-gradient-to-br from-blue-900/20 via-purple-900/10 to-pink-900/20 pointer-events-none" />
-      
+
       {/* Login container */}
       <div className="w-full max-w-md relative">
         {/* Logo/Brand section */}
         <div className="text-center mb-8">
-          <div className="w-12 h-12 bg-gradient-to-r from-blue-500 to-purple-600 rounded-xl mx-auto mb-4 flex items-center justify-center">
-            <div className="w-6 h-6 bg-white rounded-sm" />
+          <div className="w-12 h-12 bg-white rounded-xl mx-auto mb-4 flex items-center justify-center">
+            <Image src="/logo.png" alt="logo" width={50} height={50} />
           </div>
-          <h1 className="text-2xl font-semibold text-white mb-2">Welcome back</h1>
+          <h1 className="text-2xl font-semibold text-white mb-2">
+            Welcome back
+          </h1>
           <p className="text-gray-400 text-sm">Sign in to your account</p>
         </div>
 
@@ -93,13 +96,18 @@ export default function LoginPage() {
                 <div className="w-full border-t border-gray-700" />
               </div>
               <div className="relative flex justify-center text-sm">
-                <span className="px-2 bg-[#1a1a1a] text-gray-400">Or continue with email</span>
+                <span className="px-2 bg-[#1a1a1a] text-gray-400">
+                  Or continue with email
+                </span>
               </div>
             </div>
 
             {/* Email input */}
             <div>
-              <label htmlFor="email" className="block text-sm font-medium text-gray-300 mb-2">
+              <label
+                htmlFor="email"
+                className="block text-sm font-medium text-gray-300 mb-2"
+              >
                 Email
               </label>
               <input
@@ -116,7 +124,10 @@ export default function LoginPage() {
 
             {/* Password input */}
             <div>
-              <label htmlFor="password" className="block text-sm font-medium text-gray-300 mb-2">
+              <label
+                htmlFor="password"
+                className="block text-sm font-medium text-gray-300 mb-2"
+              >
                 Password
               </label>
               <input
@@ -139,14 +150,30 @@ export default function LoginPage() {
             >
               {isLoading ? (
                 <div className="flex items-center justify-center">
-                  <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  <svg
+                    className="animate-spin -ml-1 mr-3 h-5 w-5 text-white"
+                    xmlns="http://www.w3.org/2000/svg"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                  >
+                    <circle
+                      className="opacity-25"
+                      cx="12"
+                      cy="12"
+                      r="10"
+                      stroke="currentColor"
+                      strokeWidth="4"
+                    ></circle>
+                    <path
+                      className="opacity-75"
+                      fill="currentColor"
+                      d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                    ></path>
                   </svg>
                   Signing in...
                 </div>
               ) : (
-                'Sign in'
+                "Sign in"
               )}
             </button>
           </div>
@@ -158,13 +185,18 @@ export default function LoginPage() {
                 <div className="w-full border-t border-gray-700" />
               </div>
               <div className="relative flex justify-center text-sm">
-                <span className="px-2 bg-[#1a1a1a] text-gray-400">Don't have an account?</span>
+                <span className="px-2 bg-[#1a1a1a] text-gray-400">
+                  Don't have an account?
+                </span>
               </div>
             </div>
           </div>
 
           <div className="text-center">
-            <Link href="/register" className="text-blue-400 hover:text-blue-300 font-medium transition-colors duration-200">
+            <Link
+              href="/register"
+              className="text-blue-400 hover:text-blue-300 font-medium transition-colors duration-200"
+            >
               Create account
             </Link>
           </div>
@@ -172,11 +204,11 @@ export default function LoginPage() {
 
         {/* Footer */}
         <div className="mt-8 text-center text-xs text-gray-500">
-          By continuing, you agree to our{' '}
+          By continuing, you agree to our{" "}
           <button className="text-blue-400 hover:text-blue-300 transition-colors duration-200">
             Terms of Service
-          </button>{' '}
-          and{' '}
+          </button>{" "}
+          and{" "}
           <button className="text-blue-400 hover:text-blue-300 transition-colors duration-200">
             Privacy Policy
           </button>

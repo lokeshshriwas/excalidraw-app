@@ -7,6 +7,7 @@ import { MobileMenu } from "../component/MobileMenu";
 import { RazorpayCheckout } from "../component/RazorpayCheckout";
 import { SubscriptionBadge } from "../component/SubscriptionBadge";
 import { useSubscription } from "../hooks/useSubscription";
+import Image from "next/image";
 
 export default function PricingPage() {
   const [token, setToken] = useState<string | null>(null);
@@ -41,12 +42,12 @@ export default function PricingPage() {
         <div className="max-w-7xl mx-auto px-6 py-4">
           <div className="flex justify-between items-center">
             <Link href="/" className="flex items-center space-x-2">
-              <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg flex items-center justify-center">
-                <Pencil className="w-5 h-5 text-white" />
-              </div>
-              <span className="text-xl font-bold text-gray-900">
-                DrawTogether
-              </span>
+              <Image
+                src="/logo-name.png"
+                alt="logo with name"
+                width={150}
+                height={50}
+              />
             </Link>
 
             <div className="hidden md:flex items-center space-x-6">
