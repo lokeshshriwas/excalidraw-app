@@ -15,6 +15,9 @@ const geistMono = localFont({
 export const metadata: Metadata = {
   title: "DrawTogether",
   description: "Real-time collaborative whiteboard",
+  icons: {
+    icon: "/favicon.ico",
+  },
 };
 
 export default function RootLayout({
