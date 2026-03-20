@@ -15,111 +15,60 @@ const OAuth: React.FC<OAuthProps> = ({ onSuccess, onError }) => {
     github: false,
   });
 
-  const handleGoogleAuth = () => {
-    setLoading((prev) => ({ ...prev, google: true }));
+  const openOAuthPopup = (
+    provider: "google" | "github",
+    successType: "GOOGLE_OAUTH_SUCCESS" | "GITHUB_OAUTH_SUCCESS",
+    errorType: "GOOGLE_OAUTH_ERROR" | "GITHUB_OAUTH_ERROR"
+  ) => {
+    setLoading((prev) => ({ ...prev, [provider]: true }));
 
+    // The backend initiation route handles the redirect to the OAuth provider.
+    // BASE_URL already includes /v1 (e.g. http://localhost:3002/v1 or https://drawapp.bylokesh.in/v1)
+    const popupUrl = `${BASE_URL}/auth/${provider}`;
     const popup = window.open(
-      `https://accounts.google.com/o/oauth2/v2/auth?` +
-        `client_id=${process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID}&` +
-        `redirect_uri=${encodeURIComponent(window.location.origin + "/auth/google/callback")}&` +
-        `response_type=code&` +
-        `scope=email profile`,
-      "google_oauth",
-      "width=500,height=600,scrollbars=yes,resizable=yes",
+      popupUrl,
+      `${provider}_oauth`,
+      "width=500,height=600,scrollbars=yes,resizable=yes"
     );
 
     const checkClosed = setInterval(() => {
       if (popup?.closed) {
         clearInterval(checkClosed);
-        setLoading((prev) => ({ ...prev, google: false }));
+        setLoading((prev) => ({ ...prev, [provider]: false }));
       }
     }, 1000);
 
     const messageListener = (event: MessageEvent) => {
-      if (event.origin !== window.location.origin) return;
+      // The postMessage HTML is returned by the backend callback route, so the
+      // popup's origin is the BACKEND origin (e.g. http://localhost:3002), not
+      // the frontend origin. Accept messages from either origin and rely on
+      // the known message type as the integrity check instead.
+      const isKnownType =
+        event.data?.type === successType || event.data?.type === errorType;
+      if (!isKnownType) return;
 
-      if (event.data.type === "GOOGLE_OAUTH_SUCCESS") {
-        clearInterval(checkClosed);
-        popup?.close();
-        handleOAuthResponse(event.data.user, "google");
-        window.removeEventListener("message", messageListener);
-      } else if (event.data.type === "GOOGLE_OAUTH_ERROR") {
-        clearInterval(checkClosed);
-        popup?.close();
-        setLoading((prev) => ({ ...prev, google: false }));
-        onError(event.data.message);
-        window.removeEventListener("message", messageListener);
+      clearInterval(checkClosed);
+      window.removeEventListener("message", messageListener);
+
+      if (event.data.type === successType) {
+        setLoading((prev) => ({ ...prev, [provider]: false }));
+        onSuccess(event.data.token, event.data.user);
+      } else {
+        setLoading((prev) => ({ ...prev, [provider]: false }));
+        onError(event.data.message || "Authentication failed");
       }
     };
 
     window.addEventListener("message", messageListener);
+  };
+
+
+  const handleGoogleAuth = () => {
+    openOAuthPopup("google", "GOOGLE_OAUTH_SUCCESS", "GOOGLE_OAUTH_ERROR");
   };
 
   const handleGitHubAuth = () => {
-    setLoading((prev) => ({ ...prev, github: true }));
-
-    const popup = window.open(
-      `https://github.com/login/oauth/authorize?` +
-        `client_id=${process.env.NEXT_PUBLIC_GITHUB_CLIENT_ID}&` +
-        `redirect_uri=${encodeURIComponent(window.location.origin + "/auth/github/callback")}&` +
-        `scope=user:email`,
-      "github_oauth",
-      "width=500,height=600,scrollbars=yes,resizable=yes",
-    );
-
-    const checkClosed = setInterval(() => {
-      if (popup?.closed) {
-        clearInterval(checkClosed);
-        setLoading((prev) => ({ ...prev, github: false }));
-      }
-    }, 1000);
-
-    const messageListener = (event: MessageEvent) => {
-      if (event.origin !== window.location.origin) return;
-
-      if (event.data.type === "GITHUB_OAUTH_SUCCESS") {
-        clearInterval(checkClosed);
-        popup?.close();
-        // Use the token from the event data instead of calling handleOAuthResponse
-        onSuccess(event.data.token, event.data.user);
-        window.removeEventListener("message", messageListener);
-      } else if (event.data.type === "GITHUB_OAUTH_ERROR") {
-        clearInterval(checkClosed);
-        popup?.close();
-        setLoading((prev) => ({ ...prev, github: false }));
-        onError(event.data.message);
-        window.removeEventListener("message", messageListener);
-      }
-    };
-
-    window.addEventListener("message", messageListener);
-  };
-
-  const handleOAuthResponse = async (
-    userData: any,
-    provider: "google" | "github",
-  ) => {
-    try {
-      const response = await fetch(`${BASE_URL}/auth/${provider}`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(userData),
-      });
-
-      const data = await response.json();
-
-      if (response.ok) {
-        onSuccess(data.token, data.user);
-      } else {
-        onError(data.message || "OAuth authentication failed");
-      }
-    } catch (error) {
-      onError("Network error during OAuth authentication");
-    } finally {
-      setLoading((prev) => ({ ...prev, [provider]: false }));
-    }
+    openOAuthPopup("github", "GITHUB_OAUTH_SUCCESS", "GITHUB_OAUTH_ERROR");
   };
 
   return (

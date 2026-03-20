@@ -27,14 +27,11 @@ docker build -t $DOCKERHUB_USERNAME/excalidraw-http:latest -f apps/http-backend/
 echo "📦 Building ws-backend..."
 docker build -t $DOCKERHUB_USERNAME/excalidraw-ws:latest -f apps/ws-backend/Dockerfile .
 
-# Build Frontend (with environment variables)
+# Build Frontend (with environment variables baked in at build time)
 echo "📦 Building frontend..."
 docker build -t $DOCKERHUB_USERNAME/excalidraw-frontend:latest \
-  --build-arg NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL \
   --build-arg NEXT_PUBLIC_WS_URL=$NEXT_PUBLIC_WS_URL \
-  --build-arg NEXT_PUBLIC_RAZORPAY_KEY_ID=$NEXT_PUBLIC_RAZORPAY_KEY_ID \
-  --build-arg NEXT_PUBLIC_GOOGLE_CLIENT_ID=$NEXT_PUBLIC_GOOGLE_CLIENT_ID \
-  --build-arg NEXT_PUBLIC_GITHUB_CLIENT_ID=$NEXT_PUBLIC_GITHUB_CLIENT_ID \
+  --build-arg NEXT_PUBLIC_BASE_URL=$NEXT_PUBLIC_BASE_URL \
   -f apps/excalidraw-frontend/Dockerfile .
 
 echo "✅ All images built successfully!"

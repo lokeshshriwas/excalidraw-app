@@ -1,5 +1,12 @@
 import { Router } from "express";
-import { signupController, signinController, googleOAuthController, githubCallbackController } from "../controllers/auth.controller";
+import {
+  signupController,
+  signinController,
+  googleInitiateController,
+  googleCallbackController,
+  githubInitiateController,
+  githubCallbackController,
+} from "../controllers/auth.controller";
 
 const router: Router = Router();
 
@@ -7,9 +14,12 @@ const router: Router = Router();
 router.post("/signup", signupController);
 router.post("/signin", signinController);
 
-// OAuth routes
-router.post("/google", googleOAuthController);
+// Google OAuth — backend-driven redirect flow
+router.get("/google", googleInitiateController);
+router.get("/google/callback", googleCallbackController);
 
-router.post("/github/callback", githubCallbackController);  // Add this route
+// GitHub OAuth — backend-driven redirect flow
+router.get("/github", githubInitiateController);
+router.get("/github/callback", githubCallbackController);
 
 export default router;
